@@ -1,0 +1,217 @@
+{
+  "version": 1,
+  "name": "HTTPX cited-evidence map inspection",
+  "scope": "Public encode/httpx 0.28.1 at commit 26d48e0634e6ee9cdc0533996db289ce4b430177. All Python files under httpx/; documentation, tests, application deployment and HTTPcore sources excluded. Questions and source-inspected reference spans fixed before pipeline results. Assistant inspection, no independent users or timing comparison. See httpx-map-protocol.md. Upstream BSD license retained in httpx-LICENSE.md.",
+  "snapshot": {
+    "kind": "git",
+    "revision": "26d48e0634e6ee9cdc0533996db289ce4b430177",
+    "files": [
+      {
+        "path": "httpx/__init__.py",
+        "sha256": "0ac6997bac998f4ac783adf6d8058a587193315afdb718047c3e4fdff46bcfad"
+      },
+      {
+        "path": "httpx/__version__.py",
+        "sha256": "2e853261e3974e2786cee3ffeb850bd30c5db718eebbf41b3af13b34e83e22a5"
+      },
+      {
+        "path": "httpx/_api.py",
+        "sha256": "aff660b388c8a5c3c92ea2b975b6d26b2aa8fe254c2856b164277ea0e1f12c4b"
+      },
+      {
+        "path": "httpx/_auth.py",
+        "sha256": "62bdd0c1a5122b5eeb198c7eee3f85762705233cf863d14557ed45e3eed15d7e"
+      },
+      {
+        "path": "httpx/_client.py",
+        "sha256": "c43f941baefe58c91e96d00039e1868fe719d91453026d7db1647194563bff8d"
+      },
+      {
+        "path": "httpx/_config.py",
+        "sha256": "a4fa7653ec2271f70ab05f8a6111352d876dddee84446788a1767c1a3a372d67"
+      },
+      {
+        "path": "httpx/_content.py",
+        "sha256": "2c61b3ac94d1dcebcde0c6f519554d2d7917247fbaa0a97002db4ef69e70ff28"
+      },
+      {
+        "path": "httpx/_decoders.py",
+        "sha256": "a74757f08d0d1077b1b37506a784ac66eb62321b17aeb5a5ebe1a7a956f488a3"
+      },
+      {
+        "path": "httpx/_exceptions.py",
+        "sha256": "6f15bb7f1ce054c01d3536f04f4567ab4e202435b5fe023f1858903ee3328cbd"
+      },
+      {
+        "path": "httpx/_main.py",
+        "sha256": "0a0f4631a6e24d3fecc1a0df5202118ad4b0c4b44c4b05033a6ecb7521aa940e"
+      },
+      {
+        "path": "httpx/_models.py",
+        "sha256": "e3ffc6bb2bf580bc6e6428708a6f247d036220e709f5a72b785392babbd97e6b"
+      },
+      {
+        "path": "httpx/_multipart.py",
+        "sha256": "28e1c465997aa28860f663da2b2caedf8e6aab5ac92e0df94d41b7600cd70776"
+      },
+      {
+        "path": "httpx/_status_codes.py",
+        "sha256": "0d89fedae7c180c797cb9b3cc77fd307bc2302e00031ec136a43eb9b9ad712c7"
+      },
+      {
+        "path": "httpx/_transports/__init__.py",
+        "sha256": "19b52805200ea7bcfe97ef63e5884c851dc3308727e8554b863d3bd8edcd9e7a"
+      },
+      {
+        "path": "httpx/_transports/asgi.py",
+        "sha256": "1d17e20d830fb78c101f6805807660e1cfa2dec6e5a3a6cbe464ea7044fec73f"
+      },
+      {
+        "path": "httpx/_transports/base.py",
+        "sha256": "9194bf54c6d58987c5e7bd29a205022756ee973fb26df2f9d4faacf7292d79b5"
+      },
+      {
+        "path": "httpx/_transports/default.py",
+        "sha256": "03379a454c95c0271c4f2c8d25ec437f49f57457f3cf2769748420bf0ecf2e79"
+      },
+      {
+        "path": "httpx/_transports/mock.py",
+        "sha256": "3d3a34779ebb4484d7c46ae48ba90deffebbc300317f088c0dcb972626428c4a"
+      },
+      {
+        "path": "httpx/_transports/wsgi.py",
+        "sha256": "35c3d7dd76a9fc4c0215958efce692c9036e227098c7540c35b3bc1807a2ea36"
+      },
+      {
+        "path": "httpx/_types.py",
+        "sha256": "272878d4642aec039ebfc20e58a0c083bcc26ef1c07ee7e65b983f3e24ed12b6"
+      },
+      {
+        "path": "httpx/_urlparse.py",
+        "sha256": "640987e3b38d7e4c6bae3f8f3d88467a21e36fa0232824be00d58837838bfca6"
+      },
+      {
+        "path": "httpx/_urls.py",
+        "sha256": "757f7d551d4348e1e9828f40abb3f360ee0529dc6a2a3c32369f20adff1d1cdd"
+      },
+      {
+        "path": "httpx/_utils.py",
+        "sha256": "fd355ea802afc4990a1ddcfb74579be2cd0b66a41781e1645d281f88704aff5a"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "response-status",
+      "question": "Which class owns raise_for_status, and what happens for a successful response or a non-success response?",
+      "evidence": [
+        {
+          "id": "owner",
+          "path": "httpx/_models.py",
+          "start_line": 515,
+          "end_line": 515,
+          "quote": "class Response:"
+        },
+        {
+          "id": "status-check",
+          "path": "httpx/_models.py",
+          "start_line": 794,
+          "end_line": 829,
+          "quote": "def raise_for_status(self)"
+        },
+        {
+          "id": "success-definition",
+          "path": "httpx/_models.py",
+          "start_line": 731,
+          "end_line": 736,
+          "quote": "def is_success(self)"
+        }
+      ],
+      "reference_notes": "Response owns raise_for_status. It first requires an attached request, raising RuntimeError if absent; then returns self for a successful (2xx) response. Otherwise it raises HTTPStatusError with the request and response. Redirect location changes the error message. Source identity can establish the owning class even when its header is absent from a chunk; partial text still limits behavioral claims."
+    },
+    {
+      "id": "sync-request-path",
+      "question": "For synchronous httpx.get, how does execution reach a transport's handle_request? Identify the intermediate functions and methods.",
+      "evidence": [
+        {
+          "id": "public-export",
+          "path": "httpx/__init__.py",
+          "start_line": 2,
+          "end_line": 2,
+          "quote": "from ._api import *"
+        },
+        {
+          "id": "client-binding",
+          "path": "httpx/_api.py",
+          "start_line": 6,
+          "end_line": 6,
+          "quote": "from ._client import Client"
+        },
+        {
+          "id": "get-delegation",
+          "path": "httpx/_api.py",
+          "start_line": 195,
+          "end_line": 207,
+          "quote": "return request("
+        },
+        {
+          "id": "request-delegation",
+          "path": "httpx/_api.py",
+          "start_line": 102,
+          "end_line": 120,
+          "quote": "return client.request("
+        },
+        {
+          "id": "client-request",
+          "path": "httpx/_client.py",
+          "start_line": 812,
+          "end_line": 825,
+          "quote": "return self.send("
+        },
+        {
+          "id": "client-send",
+          "path": "httpx/_client.py",
+          "start_line": 910,
+          "end_line": 919,
+          "quote": "self._send_handling_auth("
+        },
+        {
+          "id": "auth-step",
+          "path": "httpx/_client.py",
+          "start_line": 937,
+          "end_line": 946,
+          "quote": "self._send_handling_redirects("
+        },
+        {
+          "id": "redirect-step",
+          "path": "httpx/_client.py",
+          "start_line": 970,
+          "end_line": 979,
+          "quote": "self._send_single_request(request)"
+        },
+        {
+          "id": "transport-selection",
+          "path": "httpx/_client.py",
+          "start_line": 760,
+          "end_line": 769,
+          "quote": "def _transport_for_url("
+        },
+        {
+          "id": "transport-call",
+          "path": "httpx/_client.py",
+          "start_line": 1001,
+          "end_line": 1014,
+          "quote": "transport.handle_request(request)"
+        }
+      ],
+      "reference_notes": "The public get delegates to _api.request, which creates a synchronous Client and calls Client.request. That builds a Request and delegates to send; send enters _send_handling_auth, which calls _send_handling_redirects, which calls _send_single_request. The last step selects a transport using _transport_for_url and calls its handle_request. Authentication and redirects may repeat steps. The selected transport depends on mounts/configuration; do not claim every call uses one concrete transport implementation. These call relationships require source inspection and binding evidence; containment edges alone cannot establish the path."
+    },
+    {
+      "id": "missing-deployment",
+      "question": "Which production cloud region hosts the application using this library?",
+      "unanswerable": true,
+      "evidence": [],
+      "reference_notes": "This selected corpus is library package source. It supplies no deployment inventory for an application using HTTPX. Neither class names nor a populated map establish a cloud region."
+    }
+  ]
+}

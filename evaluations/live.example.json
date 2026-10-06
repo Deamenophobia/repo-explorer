@@ -1,0 +1,13 @@
+{
+  "workspace": {
+    "mode": "demo",
+    "model": "",
+    "chat_provider": "openai",
+    "embedding_provider": "tfidf",
+    "lexical_tokenization": "code_identifiers",
+    "request_timeout": 45,
+    "max_retries": 0
+  },
+  "max_cases": 10,
+  "stop_on_error": true
+}

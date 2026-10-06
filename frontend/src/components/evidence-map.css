@@ -1,0 +1,30 @@
+.evidence-map { margin-top: 22px; border: 1px solid #d4dfc8; border-radius: 12px; background: #fafcf6; overflow: hidden; }
+.evidence-map > summary { cursor: pointer; padding: 17px 20px; color: #365439; font-size: 15px; }
+.evidence-map > summary span { display: inline-block; margin-left: 10px; color: #667957; font-size: 11px; }
+.map-content { padding: 0 20px 20px; font-size: 12px; line-height: 1.65; }
+.map-content p { margin: 10px 0; }
+.map-file-label { display: block; margin-top: 14px; font-size: 11px; color: #526a46; }
+.map-content select { width: 100%; min-width: 0; margin: 5px 0 12px; padding: 9px; background: #fff; color: #365439; border: 1px solid #cedabd; border-radius: 6px; text-overflow: ellipsis; }
+.map-tree { list-style: none; margin: 0 0 0 15px; padding: 8px 0 0 13px; border-left: 1px solid #afc397; }
+.map-tree-root { margin-left: 0; padding-left: 0; border: 0; }
+.map-tree-deep { margin-left: 0; padding-left: 0; border-left: 0; }
+.map-tree li { padding: 0; margin: 0 0 8px; min-width: 0; }
+.map-node { display: block; width: 100%; padding: 12px 14px; text-align: left; background: #f0f5e8; color: #334c30; border: 1px solid #cad8bb; border-radius: 8px; cursor: pointer; }
+.map-node[aria-pressed="true"] { background: #e5eed8; border-color: #758f59; box-shadow: 0 0 0 1px #758f59; }
+.map-node-kind { display: block; text-transform: uppercase; font-size: 9px; letter-spacing: 1.3px; color: #5c734d; }
+.map-node code { display: block; font-size: 12px; margin: 3px 0; overflow-wrap: anywhere; }
+.map-node small { font-size: 10px; color: #596e4e; }
+.map-selection { margin-top: 14px; padding: 14px; border-radius: 8px; background: #eef2e7; overflow-wrap: anywhere; }
+.map-source-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.map-source-buttons button { border: 1px solid #b9cba5; border-radius: 6px; background: #fff; color: #3f6130; padding: 9px 12px; font-size: 11px; cursor: pointer; }
+.map-node:focus-visible, .map-source-buttons button:focus-visible { outline: 3px solid #577b38; outline-offset: 3px; }
+.map-gaps { padding-left: 18px; color: #775b32; }
+.map-gap { color: #775b32; }
+.map-gaps span, .map-scope { color: #617653; font-size: 11px; }
+.source-card:focus-within { outline: 2px solid #758f59; outline-offset: 3px; }
+@media (max-width: 600px) {
+  .map-content { padding: 0 12px 14px; }
+  .evidence-map > summary { padding: 14px 12px; }
+  .map-tree { margin-left: 8px; padding-left: 8px; }
+  .map-tree-root, .map-tree-deep { margin-left: 0; padding-left: 0; }
+}

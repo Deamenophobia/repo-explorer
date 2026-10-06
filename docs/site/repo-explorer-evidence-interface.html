@@ -1,0 +1,118 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>An interface for inspecting an answer · Repo Explorer</title><style>*{box-sizing:border-box}body{margin:0;background:#f7f8f2;color:#334631;font:16px/1.85 'Segoe UI',sans-serif}header{background:#15392d;color:#e4edda;padding:30px max(24px,calc((100% - 1100px)/2));font-size:14px;letter-spacing:2px}header a{color:inherit;text-decoration:none}header small{display:block;letter-spacing:0;color:#a8be99;font-size:12px}.layout{display:grid;grid-template-columns:240px minmax(0,820px);gap:45px;max-width:1160px;margin:45px auto;padding:0 24px}nav{font-size:13px}nav a{display:block;padding:12px 0;border-bottom:1px solid #dfe7d5;text-decoration:none;color:#69805a}nav span{font-size:10px;letter-spacing:1px;color:#9aa98c}article{min-width:0}h1,h2{font-family:Georgia,serif;line-height:1.2;font-weight:400;letter-spacing:-.6px;color:#23452e}h1{font-size:43px;margin:0 0 28px}h2{font-size:29px;margin-top:42px}p{margin:19px 0}a{color:#517e37;text-underline-offset:3px}img{max-width:100%;height:auto;border:1px solid #dce5d1;border-radius:9px;display:block;margin:28px auto}p:has(>em:only-child){font-size:13px;color:#80916f;line-height:1.7}pre{background:#eaf0e1;padding:23px;overflow:auto;border-radius:8px;line-height:1.6;font-size:13px}code{font-size:.86em;overflow-wrap:anywhere}table{border-collapse:collapse;font-size:13px;width:100%}td,th{padding:12px;border-bottom:1px solid #d6dfcb;text-align:left}blockquote{border-left:3px solid #9ab17b;padding-left:20px;color:#6c805b}.draft{font-size:11px;letter-spacing:1.5px;color:#8d9e78;margin-bottom:14px}.next{border-top:1px solid #dae3cc;padding-top:24px;margin-top:45px;font-size:14px}.cards{display:grid;gap:17px}.card{display:block;padding:24px;border:1px solid #dae3cc;border-radius:10px;background:#fdfef8;text-decoration:none}.card strong{font:24px Georgia,serif;display:block;color:#325135}.card p{font-size:14px;margin:12px 0 0;color:#829372}@media(max-width:800px){.layout{display:block;margin:25px auto}nav{margin-bottom:35px}nav a{padding:7px 0}h1{font-size:35px}body{font-size:15px}header{padding:24px}}</style></head><body><header><a href="index.html">REPO EXPLORER / ENGINEERING NOTES</a><small>A repository assistant, explained from evidence to interface.</small></header><div class="layout"><nav><span>THE ENGINEERING SERIES</span><a href="repo-explorer-architecture.html">01 / Building Repo Explorer: the work of an AI engineer</a><a href="repo-explorer-retrieval.html">02 / From source files to useful evidence</a><a href="repo-explorer-langgraph-review.html">03 / A review that survives closing the browser</a><a href="repo-explorer-evidence-interface.html">04 / An interface for inspecting an answer</a><a href="repo-explorer-live-model.html">05 / Evaluating live answers against their sources</a></nav><article><div class="draft">EDITORIAL DRAFT · VERSION 0.1.0</div><h1>An interface for inspecting an answer</h1>
+<p>An explanation of <code>publish_record</code> is easier to inspect when its serialization,
+write, and replacement operations are visible beside it. Repo Explorer puts that
+source text within reach of the answer and preserves it with the saved run.</p>
+<p>The workbench puts the conversation in the main column and original passages in
+the source explorer. Below the conversation, a short execution trace shows how the
+run reached its current state. Each area has one responsibility. The current
+interface uses source cards, a short workflow trace, and an optional containment
+map of the cited evidence.</p>
+<h2>Give each claim a place to be inspected</h2>
+<p><code>EvidencePanel</code> receives typed citation objects from the API. Each card contains a
+relative file path, a line range, the exact excerpt, a similarity score, and a
+content revision. The card uses a native disclosure element so it can expand with
+a keyboard and remains understandable without a custom widget protocol.</p>
+<p>The answer is rendered as text. Repository content cannot inject executable HTML
+into the page through the answer or evidence panel. Inline source identifiers can
+be matched to the cards; the current interface does not turn them into clickable
+anchors.</p>
+<p><code>WorkflowTrace</code> receives the persisted run and highlights completed nodes. A review
+interrupt appears as a paused step. An unsupported question changes the path to
+retrieval followed by abstention instead of displaying a successful generation.</p>
+<p><img src="assets/04-abstention.png" alt="An unsupported question reaches an explicit abstention state"></p>
+<p><em>The answer explains that the snapshot lacks evidence. No citation cards are
+invented to fill the panel.</em></p>
+<h2>Keep operating mode visible</h2>
+<p>The repository banner identifies offline or live mode. An offline answer also
+carries an extractive-demo label, while the footer names the retrieval method.
+This separates three facts: whether a model was called, which retrieval adapter
+was used, and whether a workflow completed. The demo exercises retrieval and
+workflow behavior. Live explanations need separate examination against their source text.</p>
+<p>The form disables duplicate submissions while work is running. API errors appear
+in an alert with the request&#39;s failure message. Starting
+a new question clears the current view; previously created runs remain addressable
+by their saved URLs.</p>
+<h2>Design the small screen as a reading surface</h2>
+<p>On narrow screens the source explorer moves below the conversation. Navigation
+collapses away, controls remain labeled, and source text wraps. The same API and
+workflow behavior serve both layouts.</p>
+<p><img src="assets/05-mobile.png" alt="Mobile answer view with the workflow and evidence available below"></p>
+<p><em>The mobile capture comes from the running application. Evidence remains available
+in the reading flow.</em></p>
+<h2>Show which definition an excerpt belongs to</h2>
+<p>Optional source analysis adds a <strong>Code context</strong> section to each source card.
+It names definitions from the indexed snapshot and distinguishes full from partial
+definition spans. Several definitions can overlap the same passage. Unsupported
+languages and parse failures appear as explicit unavailable states, while older
+runs without metadata remain readable. The backend supplies these facts; the React
+component renders the metadata provided by the analyzer.</p>
+<p>This helps when the retrieved method is visible but the class header falls outside
+the excerpt. Seeing <code>DeadlineCache.expire</code> supplies that missing identity. The
+partial-span label tells the reader that some definition text is still absent.
+The source analyzer also records the enclosing definition&#39;s ID. The map uses
+that explicit relationship to group blocks.</p>
+<h2>Follow a definition to its passage</h2>
+<p>The <strong>Evidence map</strong> below the workflow trace shows files, classes, and functions
+from the answer&#39;s cited passages. In the example below, the selected method belongs
+to <code>DeadlineCache</code>. The class header is outside the retrieved fragment; the parser
+establishes its identity from the full indexed file.</p>
+<p><img src="assets/12-evidence-map.png" alt="The selected DeadlineCache.expire block sits inside its class and links to a partial source passage"></p>
+<p><em>Actual offline browser capture. Selecting the method shows its containing class,
+the analyzer that supplied the relationship, and a link to its supporting passage.</em></p>
+<p>The <strong>Open S1 · partial span</strong> button expands the source card and moves keyboard
+focus to it. The word “partial” matters: the parser can locate a definition even
+when the model received only part of its body. The reader can inspect exactly
+what was available to generation.</p>
+<p>Containment comes from IDs recorded during syntax traversal. Two methods with the
+same name remain distinct, including repeated declarations in one file. Each
+connection has an analyzer method and supporting source references. The backend
+constructs and saves the map after checking citation identifiers, so custom
+frontends receive the same nodes and edges through the API.</p>
+<p>To keep the view small, the UI shows one file at a time. The map has a configurable
+block limit, and definitions excluded by either that limit or the per-passage
+analysis limit are reported. Unsupported languages and missing analysis also
+remain visible. A saved review retains its map when the workspace changes.</p>
+<p>These relationships form a hierarchy, so the built-in frontend uses nested HTML
+blocks, buttons, and a disclosure control. That gives the current view a readable
+mobile layout and ordinary keyboard navigation. A general graph canvas could
+become useful when additional relationship types need to cross those boundaries.</p>
+<p>The map covers the answer&#39;s cited passages. Understanding a call chain or a
+frontend/backend connection still requires evidence about those relationships.
+The present example demonstrates source inspection; its effect on investigation
+time needs a separate comparison with existing tools.</p>
+<h2>Check what the map adds on another package</h2>
+<p>A later inspection used the Python sources from HTTPX 0.28.1. The question asked
+which class owns <code>raise_for_status</code> and how the method behaves. Retrieval returned
+part of the method without its class header. The saved map grouped it under
+<code>Response</code>, with both definitions labeled as partial spans. The parser had read the
+full indexed file and could establish that containment.</p>
+<p>The source cards already exposed those names. The map gave them a hierarchy and
+passage links; it added no evidence about the missing part of the implementation.
+The generated answer explicitly reported that its excerpt ended before the final
+exception was raised. That qualification remained essential beside the map.</p>
+<p>Another question asked how <code>httpx.get</code> reaches a transport. Retrieval found
+transport fragments but missed the intervening API and client methods. Generation
+also failed, leaving no answer or map for that case. The inspection records the
+failure alongside the successful containment example. Connected-looking blocks
+would be misleading without evidence for the actual call sites.</p>
+<p>A later retry with the same evidence completed and reported a partial answer.
+Its map showed containment within the transport files; the missing call path
+remained outside the view. This keeps a visible hierarchy separate from evidence
+that functions actually call one another.</p>
+<p>These observations support a narrow role for the current interface: make source
+identity, passage coverage, and navigation inspectable. Independent readers still
+need to assess whether that presentation helps them investigate code. The
+<a href="../MAP_EVALUATION.md">inspection record</a> provides the pinned source, fixed
+questions, separate follow-ups, and reproduction steps.</p>
+<h2>Make screenshots reproducible</h2>
+<p>The Playwright journeys start the API and frontend, ask real questions, inspect a
+source, reload a saved review, and exercise the decision controls. Screenshots are
+taken from those states into the article asset directory.
+Playwright&#39;s <a href="https://playwright.dev/docs/test-webserver">web-server support</a> lets
+the browser workflow own its local servers and a separate checkpoint directory.</p>
+<p>The articles use those captures to explain the interaction: what a reader can
+inspect, what survives a reload, and what changes after a review decision.
+Readers can reproduce the same interactions with the commands in the
+repository README. The implementation entry points are <code>App.tsx</code>,
+<code>components/EvidencePanel.tsx</code>, and <code>components/WorkflowTrace.tsx</code>.</p>
+<div class="next">Continue reading → <a href="repo-explorer-live-model.html">Evaluating live answers against their sources</a></div></article></div></body></html>

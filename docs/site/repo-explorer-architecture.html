@@ -1,0 +1,181 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Building Repo Explorer: the work of an AI engineer · Repo Explorer</title><style>*{box-sizing:border-box}body{margin:0;background:#f7f8f2;color:#334631;font:16px/1.85 'Segoe UI',sans-serif}header{background:#15392d;color:#e4edda;padding:30px max(24px,calc((100% - 1100px)/2));font-size:14px;letter-spacing:2px}header a{color:inherit;text-decoration:none}header small{display:block;letter-spacing:0;color:#a8be99;font-size:12px}.layout{display:grid;grid-template-columns:240px minmax(0,820px);gap:45px;max-width:1160px;margin:45px auto;padding:0 24px}nav{font-size:13px}nav a{display:block;padding:12px 0;border-bottom:1px solid #dfe7d5;text-decoration:none;color:#69805a}nav span{font-size:10px;letter-spacing:1px;color:#9aa98c}article{min-width:0}h1,h2{font-family:Georgia,serif;line-height:1.2;font-weight:400;letter-spacing:-.6px;color:#23452e}h1{font-size:43px;margin:0 0 28px}h2{font-size:29px;margin-top:42px}p{margin:19px 0}a{color:#517e37;text-underline-offset:3px}img{max-width:100%;height:auto;border:1px solid #dce5d1;border-radius:9px;display:block;margin:28px auto}p:has(>em:only-child){font-size:13px;color:#80916f;line-height:1.7}pre{background:#eaf0e1;padding:23px;overflow:auto;border-radius:8px;line-height:1.6;font-size:13px}code{font-size:.86em;overflow-wrap:anywhere}table{border-collapse:collapse;font-size:13px;width:100%}td,th{padding:12px;border-bottom:1px solid #d6dfcb;text-align:left}blockquote{border-left:3px solid #9ab17b;padding-left:20px;color:#6c805b}.draft{font-size:11px;letter-spacing:1.5px;color:#8d9e78;margin-bottom:14px}.next{border-top:1px solid #dae3cc;padding-top:24px;margin-top:45px;font-size:14px}.cards{display:grid;gap:17px}.card{display:block;padding:24px;border:1px solid #dae3cc;border-radius:10px;background:#fdfef8;text-decoration:none}.card strong{font:24px Georgia,serif;display:block;color:#325135}.card p{font-size:14px;margin:12px 0 0;color:#829372}@media(max-width:800px){.layout{display:block;margin:25px auto}nav{margin-bottom:35px}nav a{padding:7px 0}h1{font-size:35px}body{font-size:15px}header{padding:24px}}</style></head><body><header><a href="index.html">REPO EXPLORER / ENGINEERING NOTES</a><small>A repository assistant, explained from evidence to interface.</small></header><div class="layout"><nav><span>THE ENGINEERING SERIES</span><a href="repo-explorer-architecture.html">01 / Building Repo Explorer: the work of an AI engineer</a><a href="repo-explorer-retrieval.html">02 / From source files to useful evidence</a><a href="repo-explorer-langgraph-review.html">03 / A review that survives closing the browser</a><a href="repo-explorer-evidence-interface.html">04 / An interface for inspecting an answer</a><a href="repo-explorer-live-model.html">05 / Evaluating live answers against their sources</a></nav><article><div class="draft">EDITORIAL DRAFT · VERSION 0.1.0</div><h1>Building Repo Explorer: the work of an AI engineer</h1>
+<p>Ask a model to explain a function, and the first question is what code it gets to
+read. In one Repo Explorer experiment, retrieval found the beginning of
+<code>publish_record</code>. The passage showed JSON serialization but stopped before the
+file write. The model could explain that first operation and identify the missing
+part. After the workflow added nearby lines, it could explain the write and the
+replacement of the destination file too.</p>
+<p>That small example gives us a concrete way to discuss AI engineering. The answer
+depended on source selection, chunk boundaries, the model&#39;s input, and how the
+application handled an incomplete explanation. Each of those was a software
+design decision we could inspect and change.</p>
+<p>This series follows those decisions through Repo Explorer, a local application
+for asking questions about a configured repository and reading the source beside
+the answer. It includes an optional React frontend, a Python API, a retrieval
+pipeline, and a workflow that can save a brief for human review.</p>
+<p><img src="assets/01-workbench.png" alt="The Repo Explorer workbench with a repository snapshot, questions, and source explorer"></p>
+<p><em>The running workbench in offline demo mode. Questions execute retrieval and the
+workflow; responses display extracted passages. Chapter five shows live model responses.</em></p>
+<h2>What the AI engineer is responsible for</h2>
+<p>Here, an AI engineer builds the application around a model: how it receives
+information, what the program does with its response, and how we judge whether
+the result helps someone. Repo Explorer uses existing models. Our work is in
+connecting them to repository evidence and giving their output a useful place
+in a developer&#39;s workflow.</p>
+<p>Much of this work will look familiar to a software engineer. We define API
+contracts, handle errors, keep credentials on the server, store application state,
+and build an interface people can use. Model-generated answers add another
+question: when a request completes successfully, is its explanation supported
+by the information we supplied?</p>
+<p>The project gives that question several practical forms:</p>
+<table>
+<thead>
+<tr>
+<th>Engineering decision</th>
+<th>Example in Repo Explorer</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Choose the information available to the model</td>
+<td>Index a selected directory and retain each passage&#39;s path, lines, and content revision.</td>
+</tr>
+<tr>
+<td>Control the amount of context</td>
+<td>Retrieve a limited set of passages and optionally add nearby lines within a budget.</td>
+</tr>
+<tr>
+<td>Define the response contract</td>
+<td>Require answer text, source identifiers, an answer-coverage assessment, and missing-information details.</td>
+</tr>
+<tr>
+<td>Decide how execution proceeds</td>
+<td>Stop for missing evidence, reject invalid source references, or pause for review.</td>
+</tr>
+<tr>
+<td>Examine a failure</td>
+<td>Compare the retrieved code, the generated explanation, and the source required to answer the question.</td>
+</tr>
+<tr>
+<td>Support actual use</td>
+<td>Preserve a run across reloads and show its original evidence after workspace settings change.</td>
+</tr>
+</tbody></table>
+<p>The engineer still has to decide whether a feature earns its complexity. A second
+retrieval step needs a question it can help answer. A diagram needs a relationship
+that we can establish from evidence. A framework needs a responsibility that it
+handles clearly.</p>
+<h2>Why build this application?</h2>
+<p>For a function you already have open, asking a coding assistant to explain it is
+a reasonable starting point. Repository search and IDE navigation are useful
+baselines too. Building a separate application takes additional effort, so it
+needs a specific purpose.</p>
+<p>Repo Explorer lets us preserve the evidence behind a question, inspect the stages
+that produced the answer, change retrieval settings, and compare the result.
+A reader returning to a saved brief sees the same excerpts that reached the model.
+That makes it useful as a small AI engineering study and a working investigation
+tool we can evaluate.</p>
+<p>Its practical advantage for everyday repository work remains an open question.
+We still need comparisons on unfamiliar projects: can someone find the relevant
+behavior faster, spot an unsupported explanation, or identify a missing
+dependency more easily? The experiments in this series examine individual parts
+of that problem. They leave the larger productivity claim open.</p>
+<h2>Where RAG, LangChain, and LangGraph fit</h2>
+<p>RAG stands for <strong>retrieval-augmented generation</strong>. In this application, a question
+first goes through a search over indexed repository passages. The selected text
+is then included in the model request. The model uses that supplied context to
+write an explanation with source references. This request-time use of external
+information is the central idea described in <a href="https://docs.langchain.com/oss/python/deepagents/retrieval">LangChain&#39;s retrieval guide</a>.</p>
+<p>An example makes the dependency clear. To explain how <code>publish_record</code> writes its
+destination, the model needs the lines containing <code>pending.write_text(...)</code> and
+<code>pending.replace(destination)</code>. The function name alone leaves those operations
+unknown. Retrieving useful evidence becomes part of producing a useful answer.</p>
+<p><strong>LangChain</strong> supplies components we compose inside that pipeline: document
+objects, embedding interfaces, a vector store, prompt templates, and chat-model
+adapters. Our generation code connects a prompt to a model with a typed response:</p>
+<pre><code class="language-python">self.chain = prompt | model.with_structured_output(DraftAnswer)
+</code></pre>
+<p>The <code>|</code> passes the prompt&#39;s output into the configured model. <code>DraftAnswer</code>
+describes the fields the application expects to receive. LangChain supplies the
+composition and integration mechanisms; our code defines those fields, builds
+the source input, and decides how to handle the result. The broader framework also
+offers agent-building APIs; this project uses the components required by its
+explicit workflow. See the <a href="https://docs.langchain.com/oss/python/langchain/overview">LangChain overview</a>
+for that broader scope.</p>
+<p><strong>LangGraph</strong> controls execution. Its state holds the question, evidence, answer,
+qualifications, and completed steps. Nodes perform operations; edges choose the
+next operation. A checkpoint preserves state, and an interrupt pauses a review
+until a decision arrives. LangGraph supports this combination of deterministic
+operations and model calls through its <a href="https://docs.langchain.com/oss/python/langgraph/overview">orchestration runtime</a>.</p>
+<p>Repo Explorer currently searches once, optionally expands neighboring source,
+and generates a response. Application rules control these steps. A model-directed
+search loop would require further decisions about which tools it could call,
+how much work it could do, and when it should stop. That remains future work.</p>
+<h2>Put those responsibilities into code</h2>
+<p><img src="assets/architecture.svg" alt="Architecture with interface, API, workflow, retrieval, and generation boundaries"></p>
+<p>The architecture keeps each responsibility in an identifiable place:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>React workbench</td>
+<td>Collect questions and display answers, sources, settings, and review controls.</td>
+</tr>
+<tr>
+<td>FastAPI</td>
+<td>Validate incoming requests and expose the backend&#39;s JSON HTTP API.</td>
+</tr>
+<tr>
+<td><code>RunService</code></td>
+<td>Create, read, and resume runs.</td>
+</tr>
+<tr>
+<td>LangGraph workflow</td>
+<td>Execute steps, apply branching rules, and pause for review.</td>
+</tr>
+<tr>
+<td><code>KnowledgeIndex</code></td>
+<td>Assemble the configured retrieval components and return source passages.</td>
+</tr>
+<tr>
+<td><code>AnswerGenerator</code></td>
+<td>Produce an extractive response or call a configured chat model.</td>
+</tr>
+<tr>
+<td>SQLite checkpointer</td>
+<td>Persist the workflow state used to restore a run.</td>
+</tr>
+</tbody></table>
+<p>These components run inside a small local application. The backend starts
+independently, and the bundled React workbench is one client of its API. A custom
+frontend or command-line tool can submit the same questions and review decisions.
+Retrieval, credentials, model calls, and workflow state remain in the backend.</p>
+<p>Source loading, embeddings, generation, context expansion, and source analysis
+have registered adapter contracts. Configuration selects an implementation. This
+lets us compare lexical retrieval with learned embeddings while keeping the
+question, generation code, and review behavior consistent.</p>
+<p>The generation boundary has a small Python protocol:</p>
+<pre><code class="language-python">class AnswerGenerator(Protocol):
+    def generate(self, question, intent, sources, policy) -&gt; dict: ...
+</code></pre>
+<p><code>ExtractiveGenerator</code> supports offline exploration by displaying source excerpts.
+<code>ChatAnswerGenerator</code> sends those sources through the LangChain composition above.
+Both feed the same workflow, with the demo explicitly marked as unassessed.</p>
+<h2>Follow one request</h2>
+<p>Start in <code>backend/src/repo_explorer/api.py</code>. The API passes a new question to
+<code>RunService.create</code> in <code>service.py</code>. The graph in <code>workflow.py</code> asks
+<code>KnowledgeIndex</code> for evidence, optionally expands it, calls the generator, and
+checks citation identifiers. A question can finish; a review brief can pause for
+acceptance or rejection. That decision records the person&#39;s response to the brief.
+Repository editing is outside the application&#39;s current scope.</p>
+<p>The API returns the answer together with its passages and saved workflow state.
+The React client in <code>frontend/src/api.ts</code> reads that response. A custom client
+receives the same information; <code>docs/API.md</code> documents the contract.</p>
+<p>This is a working local prototype with a focused containment map. Cross-file
+relationship analysis, broader evaluation, and independent review remain unfinished. The following chapters
+explain the implemented parts and the observations behind them, beginning with
+how a source file becomes a retrieved passage.</p>
+<div class="next">Continue reading → <a href="repo-explorer-retrieval.html">From source files to useful evidence</a></div></article></div></body></html>

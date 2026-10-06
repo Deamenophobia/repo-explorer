@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "name": "Cachetools package-source transfer check",
+  "scope": "Public tkem/cachetools v6.2.1, MIT license, pinned commit ca7508fd56103a1b6d6f17c8e93e36c60b44ca25. All five package Python files under src/cachetools; tests, docs and deployment context excluded. Questions and source-inspected annotations fixed before retrieving results with either method. This repository was not authored for Repo Explorer, but was selected for its caching domain and is not a random or independently annotated benchmark. No model or threshold tuning uses these cases.",
+  "snapshot": {
+    "kind": "git",
+    "revision": "ca7508fd56103a1b6d6f17c8e93e36c60b44ca25",
+    "files": [
+      {
+        "path": "src/cachetools/__init__.py",
+        "sha256": "6d9542d16181ce482197b78d1aa33db8b190ad5e7a16d056a17d23944629e643"
+      },
+      {
+        "path": "src/cachetools/_cached.py",
+        "sha256": "fa2a504c2c705fe98d33f72a3cfe2b1833a83d7d51a4cccc59ac216a99857bb3"
+      },
+      {
+        "path": "src/cachetools/_cachedmethod.py",
+        "sha256": "464d8cd78c823543646613a2bef6171907a788ebbddf14fc7f7ed93b32a5c7d9"
+      },
+      {
+        "path": "src/cachetools/func.py",
+        "sha256": "701da00430910e864c7a291ecee1af683c51859e0fe3852609af2bfb75038531"
+      },
+      {
+        "path": "src/cachetools/keys.py",
+        "sha256": "00e81fa22fa88a804e9c4124d75e7ff6ab341ca212ad89db715e05d21c99d729"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "recency-eviction",
+      "question": "When the cache is full, how does it discard the item that has gone untouched the longest?",
+      "evidence": [
+        {
+          "id": "capacity-loop",
+          "path": "src/cachetools/__init__.py",
+          "start_line": 70,
+          "end_line": 84,
+          "quote": "def __setitem__(self, key, value):"
+        },
+        {
+          "id": "read-recency",
+          "path": "src/cachetools/__init__.py",
+          "start_line": 254,
+          "end_line": 258,
+          "quote": "def __getitem__(self, key, cache_getitem=Cache.__getitem__):"
+        },
+        {
+          "id": "write-recency",
+          "path": "src/cachetools/__init__.py",
+          "start_line": 260,
+          "end_line": 262,
+          "quote": "def __setitem__(self, key, value, cache_setitem=Cache.__setitem__):"
+        },
+        {
+          "id": "choose-oldest",
+          "path": "src/cachetools/__init__.py",
+          "start_line": 268,
+          "end_line": 275,
+          "quote": "def popitem(self):"
+        },
+        {
+          "id": "recency-order",
+          "path": "src/cachetools/__init__.py",
+          "start_line": 277,
+          "end_line": 282,
+          "quote": "def __touch(self, key):"
+        }
+      ],
+      "unanswerable": false,
+      "reference_notes": "This asks about the LRU policy, not every cache type. Capacity enforcement calls popitem repeatedly; LRU reads and writes update an OrderedDict, and eviction takes its first key. Do not claim all cache implementations use recency."
+    },
+    {
+      "id": "concurrent-computation",
+      "question": "With a condition enabled and statistics disabled, how are simultaneous requests for the same memoized computation prevented from doing duplicate work?",
+      "evidence": [
+        {
+          "id": "condition-wrapper",
+          "path": "src/cachetools/_cached.py",
+          "start_line": 132,
+          "end_line": 162,
+          "quote": "def _condition(func, cache, key, lock, cond):"
+        }
+      ],
+      "unanswerable": false,
+      "reference_notes": "The non-statistics function wrapper tracks pending keys under a lock and waits for the key to leave that set. Work executes outside the lock; finally removes the pending marker and notifies waiters, including on failure. Cache insertion may reject oversized values, so this is coordination of in-flight work, not a guarantee of only one computation forever."
+    },
+    {
+      "id": "ttl-expire",
+      "question": "What does TTLCache.expire remove, and what does it return?",
+      "evidence": [
+        {
+          "id": "ttl-expiration",
+          "path": "src/cachetools/__init__.py",
+          "start_line": 491,
+          "end_line": 511,
+          "quote": "def expire(self, time=None):"
+        }
+      ],
+      "unanswerable": false,
+      "reference_notes": "Uses supplied time or timer, traverses expired links, collects original key/value pairs, removes mapping and link entries, unlinks each entry, returns the collected pairs. Distinguish TTLCache from TLRUCache and do not invent a background cleanup worker."
+    },
+    {
+      "id": "missing-deployment",
+      "question": "Which production cloud region hosts this cache library?",
+      "evidence": [],
+      "unanswerable": true,
+      "reference_notes": "The selected package source files contain no production deployment region. Similarity to caching code cannot establish deployment facts."
+    }
+  ]
+}

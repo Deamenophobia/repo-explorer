@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "name": "Bounded context expansion example",
+  "scope": "One authored Python file illustrating a function split across small retrieval chunks. Designed during implementation, not held-out evaluation or a claim about repository-wide investigation. The runner only reads the code; it does not execute the write.",
+  "snapshot": {
+    "kind": "files",
+    "files": [
+      {
+        "path": "publish_record.py",
+        "sha256": "6cf55bd57ea6f3c445ee6e5509768ccf776976f75e9e2d4a59a51b4a6bdb97bc"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "function-tail",
+      "question": "publish_record",
+      "reference_notes": "The relevant operation writes the serialized payload to a pending file, then replaces the destination. The small seed chunk stops before these operations. The fixture does not establish crash durability or behavior on every filesystem.",
+      "evidence": [
+        {
+          "id": "write-then-replace",
+          "path": "publish_record.py",
+          "start_line": 8,
+          "end_line": 10,
+          "quote": "    pending = destination.with_suffix(\".pending\")\n    pending.write_text(serialized, encoding=\"utf-8\")\n    pending.replace(destination)"
+        }
+      ]
+    },
+    {
+      "id": "missing-deployment",
+      "question": "Which production region runs publish_record?",
+      "reference_notes": "The source contains no deployment-region information. Returning the complete function cannot establish where it runs.",
+      "unanswerable": true,
+      "evidence": []
+    },
+    {
+      "id": "no-seed",
+      "question": "zyzzyva quokka nebula",
+      "reference_notes": "There is no matching vocabulary. The context expander should not be invoked without a retrieved seed.",
+      "unanswerable": true,
+      "evidence": []
+    }
+  ]
+}

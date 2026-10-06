@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "name": "Identifier tokenization teaching example",
+  "scope": "Three authored source files selected to illustrate lexical naming differences and distractors. The Python store and TypeScript client are independent examples; no server route connecting them is supplied. Designed after the tokenizer experiment, so this is a regression demonstration, not held-out evidence of general quality.",
+  "snapshot": {
+    "kind": "files",
+    "files": [
+      {
+        "path": "cache_client.ts",
+        "sha256": "72264c7ba2ba4ee7110e55a9982fcaea101301e8205c3a22d43c919b56319d04"
+      },
+      {
+        "path": "cache_store.py",
+        "sha256": "0b705c535497a9f485c115c56d84ce00a0568fcaa4183f201358c5f7ebd28757"
+      },
+      {
+        "path": "http_transport.py",
+        "sha256": "62ff309b3973fa7aa2cdc403369fa83394c5faf86504481b41a0bfdbd66c18a1"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "word-components",
+      "question": "Find the cache lookup implementations.",
+      "evidence": [
+        {
+          "id": "python-lookup",
+          "path": "cache_store.py",
+          "start_line": 8,
+          "end_line": 9,
+          "quote": "    def cache_lookup(self, key):\n        return self._entries.get(key)"
+        },
+        {
+          "id": "typescript-lookup",
+          "path": "cache_client.ts",
+          "start_line": 1,
+          "end_line": 7,
+          "quote": "export async function cacheLookup(key: string) {\n  const response = await fetch(`/api/entries/${encodeURIComponent(key)}`);\n  if (!response.ok) {\n    throw new Error(`Request failed: ${response.status}`);\n  }\n  return response.json();\n}"
+        }
+      ],
+      "reference_notes": "The Python cache_lookup and TypeScript cacheLookup functions share the requested words only inside compound identifiers. This does not prove that the functions call one another."
+    },
+    {
+      "id": "exact-identifiers",
+      "question": "Find cache_lookup and cacheLookup.",
+      "evidence": [
+        {
+          "id": "python-lookup",
+          "path": "cache_store.py",
+          "start_line": 8,
+          "end_line": 9,
+          "quote": "    def cache_lookup(self, key):\n        return self._entries.get(key)"
+        },
+        {
+          "id": "typescript-lookup",
+          "path": "cache_client.ts",
+          "start_line": 1,
+          "end_line": 7,
+          "quote": "export async function cacheLookup(key: string) {\n  const response = await fetch(`/api/entries/${encodeURIComponent(key)}`);\n  if (!response.ok) {\n    throw new Error(`Request failed: ${response.status}`);\n  }\n  return response.json();\n}"
+        }
+      ],
+      "reference_notes": "A direct-name control supplies both exact spellings."
+    },
+    {
+      "id": "acronym-components",
+      "question": "Where is HTTP transport defined?",
+      "evidence": [
+        {
+          "id": "transport-class",
+          "path": "http_transport.py",
+          "start_line": 1,
+          "end_line": 6,
+          "quote": "class HTTPTransport:\n    def response_status(self, response):\n        return response.status_code\n\n    def response_body(self, response):\n        return response.content"
+        }
+      ],
+      "reference_notes": "HTTPTransport uses an acronym at the start of a PascalCase class name."
+    },
+    {
+      "id": "paraphrase",
+      "question": "How are remembered objects recovered?",
+      "evidence": [
+        {
+          "id": "python-lookup",
+          "path": "cache_store.py",
+          "start_line": 8,
+          "end_line": 9,
+          "quote": "    def cache_lookup(self, key):\n        return self._entries.get(key)"
+        }
+      ],
+      "reference_notes": "In this small fixture, recovery means reading an object retained in the local mapping. The lexical candidates cannot infer these synonyms. This question was authored as a limitation demonstration."
+    },
+    {
+      "id": "missing-deployment",
+      "question": "Which cloud region hosts the cache lookup service?",
+      "evidence": [],
+      "unanswerable": true,
+      "reference_notes": "The selected files contain no deployment-region information. Matching cache names does not supply that answer."
+    }
+  ]
+}

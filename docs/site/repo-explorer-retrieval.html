@@ -1,0 +1,194 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>From source files to useful evidence · Repo Explorer</title><style>*{box-sizing:border-box}body{margin:0;background:#f7f8f2;color:#334631;font:16px/1.85 'Segoe UI',sans-serif}header{background:#15392d;color:#e4edda;padding:30px max(24px,calc((100% - 1100px)/2));font-size:14px;letter-spacing:2px}header a{color:inherit;text-decoration:none}header small{display:block;letter-spacing:0;color:#a8be99;font-size:12px}.layout{display:grid;grid-template-columns:240px minmax(0,820px);gap:45px;max-width:1160px;margin:45px auto;padding:0 24px}nav{font-size:13px}nav a{display:block;padding:12px 0;border-bottom:1px solid #dfe7d5;text-decoration:none;color:#69805a}nav span{font-size:10px;letter-spacing:1px;color:#9aa98c}article{min-width:0}h1,h2{font-family:Georgia,serif;line-height:1.2;font-weight:400;letter-spacing:-.6px;color:#23452e}h1{font-size:43px;margin:0 0 28px}h2{font-size:29px;margin-top:42px}p{margin:19px 0}a{color:#517e37;text-underline-offset:3px}img{max-width:100%;height:auto;border:1px solid #dce5d1;border-radius:9px;display:block;margin:28px auto}p:has(>em:only-child){font-size:13px;color:#80916f;line-height:1.7}pre{background:#eaf0e1;padding:23px;overflow:auto;border-radius:8px;line-height:1.6;font-size:13px}code{font-size:.86em;overflow-wrap:anywhere}table{border-collapse:collapse;font-size:13px;width:100%}td,th{padding:12px;border-bottom:1px solid #d6dfcb;text-align:left}blockquote{border-left:3px solid #9ab17b;padding-left:20px;color:#6c805b}.draft{font-size:11px;letter-spacing:1.5px;color:#8d9e78;margin-bottom:14px}.next{border-top:1px solid #dae3cc;padding-top:24px;margin-top:45px;font-size:14px}.cards{display:grid;gap:17px}.card{display:block;padding:24px;border:1px solid #dae3cc;border-radius:10px;background:#fdfef8;text-decoration:none}.card strong{font:24px Georgia,serif;display:block;color:#325135}.card p{font-size:14px;margin:12px 0 0;color:#829372}@media(max-width:800px){.layout{display:block;margin:25px auto}nav{margin-bottom:35px}nav a{padding:7px 0}h1{font-size:35px}body{font-size:15px}header{padding:24px}}</style></head><body><header><a href="index.html">REPO EXPLORER / ENGINEERING NOTES</a><small>A repository assistant, explained from evidence to interface.</small></header><div class="layout"><nav><span>THE ENGINEERING SERIES</span><a href="repo-explorer-architecture.html">01 / Building Repo Explorer: the work of an AI engineer</a><a href="repo-explorer-retrieval.html">02 / From source files to useful evidence</a><a href="repo-explorer-langgraph-review.html">03 / A review that survives closing the browser</a><a href="repo-explorer-evidence-interface.html">04 / An interface for inspecting an answer</a><a href="repo-explorer-live-model.html">05 / Evaluating live answers against their sources</a></nav><article><div class="draft">EDITORIAL DRAFT · VERSION 0.1.0</div><h1>From source files to useful evidence</h1>
+<p>Retrieval-augmented generation (RAG) supplies a model with information found for
+the current question. In Repo Explorer, that information comes from code and
+documentation in a configured directory. The quality of an explanation therefore
+depends partly on which passages the search returns.</p>
+<p>Consider a question about how a function writes a file. A passage containing its
+name and serialization code may look relevant while omitting the actual write.
+We need to inspect both the match and the missing lines. This chapter follows
+how Repo Explorer selects that evidence and what happened when we changed the
+retrieval method.</p>
+<p><a href="https://docs.langchain.com/oss/python/deepagents/retrieval">LangChain&#39;s retrieval documentation</a>
+describes document loaders, splitters, embeddings, vector stores, and retrievers as
+separable components. Repo Explorer uses those building blocks directly. Its loader is
+small project code because preserving repository paths and exact line ranges is a
+specific requirement.</p>
+<p><img src="assets/retrieval.svg" alt="The ingestion and retrieval path"></p>
+<h2>Index the repository, then retrieve for a question</h2>
+<p>The work happens at two different times. During indexing, the source adapter reads
+files, divides them into passages, and gives each passage a numerical representation.
+The vector store holds those representations alongside the original text and its
+source metadata. This prepares the collection for search.</p>
+<p>At question time, the same representation method converts the question into a
+vector. The store compares it with the stored passage vectors and returns the
+closest matches, subject to the configured limit and score threshold. The backend
+then supplies those passages to the generator. In live mode, they become context
+in the model request; the model&#39;s weights stay unchanged. In demo mode, the
+generator displays excerpts directly so the retrieval path can be explored offline.</p>
+<p>An embedding is a vector of numbers used for these comparisons. A learned
+embedding model can place related wording close together. Repo Explorer also
+supports TF-IDF, which represents text using term weights. Both fit LangChain&#39;s
+embedding interface, allowing us to compare their retrieval behavior through the
+same store and workflow.</p>
+<h2>Ingestion preserves the path back</h2>
+<p>The source adapter used by <code>KnowledgeIndex</code> walks a configured directory and admits supported text files.
+It skips hidden paths, dependency directories, oversized files, and symlinks that
+could escape the source boundary. An admitted Markdown file can still contain
+sensitive information. The operator selects the corpus and decides which material
+may reach the configured providers.</p>
+<p><code>RecursiveCharacterTextSplitter</code> creates overlapping passages. Each chunk carries
+its text, a relative path, a start line, an end line, and a hash of the source file&#39;s
+contents. The hash identifies a content revision. Git commit identities are
+recorded separately by the snapshot-based evaluation tools.
+Together those fields tell a reader exactly which local source was indexed.</p>
+<p>Chunk boundaries affect usefulness. Very short passages lose explanations. Very
+long passages can bury the relevant detail. The initial character-based settings
+give us a baseline whose failures we can inspect. Syntax-aware splitting is a
+possible extension when a real query demonstrates the need.</p>
+<h2>Separate lexical similarity from semantic similarity</h2>
+<p>The offline mode computes TF-IDF vectors with scikit-learn through a LangChain
+<code>Embeddings</code> adapter. TF-IDF gives distinctive terms more weight, and cosine
+similarity ranks matching passages. It is useful for direct vocabulary such as
+“checkpoint” and “ingestion”. A question using different words can miss relevant
+code, as the examples below show.</p>
+<p>Those vectors go into LangChain&#39;s <code>InMemoryVectorStore</code>. A live embedding adapter
+can replace the lexical vectors without changing the graph. The score threshold
+must then be reconsidered: the same numerical score can have different meaning
+with a different embedding model. The score describes a match under that
+representation; factual support requires examining the returned text.</p>
+<h2>Names can hide the words in a question</h2>
+<p>A word-based retriever may treat <code>cache_lookup</code> and <code>cacheLookup</code> as unrelated
+tokens. In a small authored example, asking for the “cache lookup implementations”
+returns no passages with the default word tokenizer. The optional
+<code>code_identifiers</code> setting separates naming components before lowercasing and
+also retains a compact spelling. Both names contribute <code>cache</code>, <code>lookup</code>, and
+<code>cachelookup</code>, so the same question retrieves the Python and TypeScript examples.</p>
+<p>This uses the tokenizer extension of scikit-learn&#39;s
+<a href="https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html"><code>TfidfVectorizer</code></a>
+inside the existing LangChain embedding adapter. Source excerpts remain original;
+only the representation used for ranking changes. The graph and HTTP API do not
+need another retrieval implementation. Select the option in <strong>Settings → Retrieval
+→ TF-IDF tokenization</strong>; the default remains <code>standard</code>.</p>
+<p>The comparison is reproducible with <code>evaluations/identifiers.json</code> and
+<code>examples/identifier-repository</code>. The evaluator runs standard TF-IDF,
+identifier-aware TF-IDF, and keyword overlap on the same chunks and context budget.
+The fixture was authored during development to illustrate the behavior, so its
+results are limited to that example. The two functions are independent examples;
+establishing a client/server connection would require a route or another explicit
+link between them.</p>
+<p>The failures matter too. The lexical methods still miss a paraphrase about
+recovering remembered objects. Identifier tokenization also retrieves cache code
+for a cloud-region question that the fixture cannot answer. Better matching can
+increase distracting context. This is why retrieving a passage and establishing
+that it answers the question must be evaluated separately.</p>
+<h2>Try learned retrieval against an observed failure</h2>
+<p>The next experiment replaces TF-IDF with local learned vectors through the optional
+FastEmbed adapter. It implements LangChain&#39;s embedding interface and delegates
+inference to <a href="https://qdrant.github.io/fastembed/">FastEmbed</a>; the vector store and
+LangGraph workflow stay the same. The model is a configuration choice. This run uses
+<code>BAAI/bge-small-en-v1.5</code>, a small English text model, with local CPU inference after
+downloading its weights. Its usefulness for code needs to be checked against the
+questions and repositories we want to support.</p>
+<p>The two methods receive identical chunks and return at most two passages. Context
+expansion is disabled. The comparison also disables the similarity cutoff so that
+a threshold tuned for TF-IDF does not become an unexplained threshold for learned
+vectors. A TF-IDF query with no indexed vocabulary still produces no context.</p>
+<p>For “How are remembered objects recovered?”, learned retrieval places the Python
+cache implementation first, followed by an unrelated HTTP helper. The same Codex
+generation pipeline now explains the dictionary lookup and the missing-key behavior.
+It explicitly qualifies the interpretation: if “remembered objects” means cached
+values, this implementation answers it. The model reports a partial answer because
+the phrase itself is ambiguous. Retrieval improved without resolving user intent.</p>
+<p>The direct-name control still locates both implementations. For the deployment-region
+control, both methods return related cache code, and both generated responses say
+the region cannot be determined. Learned similarity supplies evidence candidates;
+it does not establish that the requested fact exists.</p>
+<p>These are actual backend runs with the same generation configuration. The screenshots
+elsewhere in this chapter remain offline interface demonstrations. The questions,
+retrieved passages, model drafts, and source inspections are separate artifacts;
+source support is assessed separately from citation validity and the model&#39;s own
+answer-coverage label.</p>
+<h2>Check whether the result transfers to real package code</h2>
+<p>A second comparison pins Cachetools v6.2.1 and indexes all five Python package files.
+Questions and source annotations were written before inspecting either retriever&#39;s
+results. This adds code not authored for Repo Explorer, although selecting a caching
+library still limits the experiment&#39;s independence and domain coverage.</p>
+<p>For <code>TTLCache.expire</code>, TF-IDF returns imports and decorator code, so generation
+declines to explain the missing method. Learned retrieval returns the implementation;
+the response explains the expiration cutoff and returned key/value pairs. The
+<a href="https://github.com/tkem/cachetools/blob/ca7508fd56103a1b6d6f17c8e93e36c60b44ca25/src/cachetools/__init__.py#L491">pinned source</a>
+supports that explanation. Neither retriever recovers the full recency-eviction path
+within the two-passage allowance. That investigation still needs additional evidence.</p>
+<p>The concurrency question exposes a subtler issue. Learned retrieval finds the
+<a href="https://github.com/tkem/cachetools/blob/ca7508fd56103a1b6d6f17c8e93e36c60b44ca25/src/cachetools/_cachedmethod.py#L17">method-level condition wrapper</a>,
+and generation explains its pending-key set, waiting, and cleanup. Our annotation
+instead names the analogous function wrapper. The returned code supports the
+explanation, while strict evidence coverage reports the annotated span missing.
+The question allows both interpretations; the reference needs that qualification.
+Keep the original result and review the annotation instead of silently changing it
+to reward one method.</p>
+<p>These observations justify offering learned embeddings as a configurable option.
+They also identify work that embedding choice alone cannot solve: retaining a
+chunk&#39;s owning class, distinguishing related implementations, and following missing
+operations across passages. Those are concrete requirements for later structural
+context and evidence maps. The experiment does not establish a universal winner,
+performance on large repositories, or an advantage over an IDE or coding assistant.</p>
+<h2>Preserve definition identity without changing the retrieval experiment</h2>
+<p>The expiration example exposed an immediate gap: its passage contains the method,
+but not its class header. Repo Explorer now offers a configurable <code>python_ast</code>
+source analyzer. It uses Python&#39;s parser over the complete indexed text, then
+attaches intersecting class and function definitions to each returned passage.
+Embedding inputs, excerpt text, and ranking stay unchanged.</p>
+<p>Select <strong>Settings → Evidence context → Source analysis → python_ast</strong>. The default
+is <code>none</code>; the definition limit is also configurable. The analyzer is a separate
+registered adapter, so another language can supply its own implementation without
+changing the graph or frontend.</p>
+<p><img src="assets/11-source-identity.png" alt="An excerpt identifies DeadlineCache.expire even though its class header is outside the passage"></p>
+<p><em>Actual offline browser capture using an authored Python example. Code context
+identifies the enclosing class and method while explicitly marking their definition
+spans as partial. The source text remains the original retrieved fragment.</em></p>
+<p>A passage can cross several definitions, so the API returns a list of overlapping
+definitions. Definition ranges refer to the
+indexed file; full-span coverage means the entire definition is present in the
+excerpt. Answer correctness needs a separate assessment.
+The analyzer reports unsupported languages, parse failures, and mismatched source
+explicitly. Nearby-line expansion recalculates the metadata because it can cross
+definition boundaries. Saved reviews retain their original identities and evidence.</p>
+<p>The Cachetools question was also exercised through real Codex generation with this
+metadata. Its two retrieved excerpts were unchanged: the first identified
+<code>TTLCache.expire</code> with full definition coverage, while the second identified a partial
+<code>TLRUCache.expire</code>. The response still correctly explained the expiration operation.
+This establishes that explicit identity reaches generation; the previous answer was
+already correct, so the run does not demonstrate an answer-quality improvement.</p>
+<p>The parser identifies definitions by their lexical scope in the file. Resolving
+calls through inheritance, aliases, dynamic dispatch, or frontend/backend
+contracts requires additional analysis. Chapter four shows how the interface uses
+explicit containment relationships to group these definitions and open their
+supporting passages. Other relationship types remain outside that view.</p>
+<h2>Inspect a concrete query</h2>
+<p>Ask: <strong>How does repository ingestion preserve source references?</strong> The workflow
+retrieves passages and the interface exposes their original text. Expand
+<code>docs/ingestion.md</code> in the source explorer to inspect the source and line range.</p>
+<p><img src="assets/02-evidence.png" alt="An answer with the original ingestion passage expanded"></p>
+<p><em>The offline generator displays the retrieved passage. The source card includes
+its line range and content revision.</em></p>
+<p>The generator receives the retrieved passages. The mandatory <code>POLICY.md</code> file is
+also loaded directly; policy enforcement must not depend on whether a similarity
+search happens to return a rule. Some rules become deterministic graph behavior,
+such as requiring a decision for review intent. Other rules remain prompt guidance
+and should not be described as mechanically enforced.</p>
+<h2>Missing evidence is a valid outcome</h2>
+<p>For a passage that matches but loses neighboring code at a chunk boundary, an
+optional LangGraph context-expansion step can add nearby lines from the indexed
+snapshot. It has explicit line and character bounds and preserves the original
+ranking. The next chapter demonstrates that operation and its saved trace. It
+does not fix a missing seed, follow a call to another file, or judge answerability.</p>
+<p>When nothing exceeds the retrieval threshold, the graph routes to <code>abstain</code> and
+does not call the generator. This prevents an empty context from becoming an
+invitation to improvise. It does not solve weak but superficially similar matches;
+retrieval relevance still needs inspection using real repository questions.</p>
+<p>The index is rebuilt at startup or when settings are applied. Reapply settings
+after editing the corpus. Completed and
+pending runs keep their source excerpts in checkpoints, so later file edits do
+not silently replace the evidence behind an earlier answer.</p>
+<div class="next">Continue reading → <a href="repo-explorer-langgraph-review.html">A review that survives closing the browser</a></div></article></div></body></html>

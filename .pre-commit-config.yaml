@@ -1,0 +1,33 @@
+minimum_pre_commit_version: '4.6.2'
+default_install_hook_types: [pre-commit]
+default_stages: [pre-commit]
+repos:
+  - repo: local
+    hooks:
+      - id: local-workspace-files
+        name: Keep local configuration and runtime data out of Git
+        language: fail
+        entry: >-
+          Local configuration and runtime files must stay untracked.
+          Unstage these files and use .env.example for shareable placeholders.
+        types: []
+        files: '(?i)(^|/)(\.env($|\.(?!example$)[^/]+$)|repo-explorer\.json$|\.repo-explorer(/|$))'
+      - id: staged-whitespace
+        name: Check staged whitespace and conflict markers
+        language: unsupported
+        entry: git -c core.whitespace=trailing-space,space-before-tab diff --cached --check
+        pass_filenames: false
+        always_run: true
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.10
+    hooks:
+      - id: ruff-check
+        name: Check backend Python lint
+        files: ^backend/
+        types_or: [python, pyi]
+        args: [--no-fix]
+      - id: ruff-format
+        name: Check backend Python formatting
+        files: ^backend/
+        types_or: [python, pyi]
+        args: [--check]

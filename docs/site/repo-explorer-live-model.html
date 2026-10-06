@@ -1,0 +1,268 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Evaluating live answers against their sources · Repo Explorer</title><style>*{box-sizing:border-box}body{margin:0;background:#f7f8f2;color:#334631;font:16px/1.85 'Segoe UI',sans-serif}header{background:#15392d;color:#e4edda;padding:30px max(24px,calc((100% - 1100px)/2));font-size:14px;letter-spacing:2px}header a{color:inherit;text-decoration:none}header small{display:block;letter-spacing:0;color:#a8be99;font-size:12px}.layout{display:grid;grid-template-columns:240px minmax(0,820px);gap:45px;max-width:1160px;margin:45px auto;padding:0 24px}nav{font-size:13px}nav a{display:block;padding:12px 0;border-bottom:1px solid #dfe7d5;text-decoration:none;color:#69805a}nav span{font-size:10px;letter-spacing:1px;color:#9aa98c}article{min-width:0}h1,h2{font-family:Georgia,serif;line-height:1.2;font-weight:400;letter-spacing:-.6px;color:#23452e}h1{font-size:43px;margin:0 0 28px}h2{font-size:29px;margin-top:42px}p{margin:19px 0}a{color:#517e37;text-underline-offset:3px}img{max-width:100%;height:auto;border:1px solid #dce5d1;border-radius:9px;display:block;margin:28px auto}p:has(>em:only-child){font-size:13px;color:#80916f;line-height:1.7}pre{background:#eaf0e1;padding:23px;overflow:auto;border-radius:8px;line-height:1.6;font-size:13px}code{font-size:.86em;overflow-wrap:anywhere}table{border-collapse:collapse;font-size:13px;width:100%}td,th{padding:12px;border-bottom:1px solid #d6dfcb;text-align:left}blockquote{border-left:3px solid #9ab17b;padding-left:20px;color:#6c805b}.draft{font-size:11px;letter-spacing:1.5px;color:#8d9e78;margin-bottom:14px}.next{border-top:1px solid #dae3cc;padding-top:24px;margin-top:45px;font-size:14px}.cards{display:grid;gap:17px}.card{display:block;padding:24px;border:1px solid #dae3cc;border-radius:10px;background:#fdfef8;text-decoration:none}.card strong{font:24px Georgia,serif;display:block;color:#325135}.card p{font-size:14px;margin:12px 0 0;color:#829372}@media(max-width:800px){.layout{display:block;margin:25px auto}nav{margin-bottom:35px}nav a{padding:7px 0}h1{font-size:35px}body{font-size:15px}header{padding:24px}}</style></head><body><header><a href="index.html">REPO EXPLORER / ENGINEERING NOTES</a><small>A repository assistant, explained from evidence to interface.</small></header><div class="layout"><nav><span>THE ENGINEERING SERIES</span><a href="repo-explorer-architecture.html">01 / Building Repo Explorer: the work of an AI engineer</a><a href="repo-explorer-retrieval.html">02 / From source files to useful evidence</a><a href="repo-explorer-langgraph-review.html">03 / A review that survives closing the browser</a><a href="repo-explorer-evidence-interface.html">04 / An interface for inspecting an answer</a><a href="repo-explorer-live-model.html">05 / Evaluating live answers against their sources</a></nav><article><div class="draft">EDITORIAL DRAFT · VERSION 0.1.0</div><h1>Evaluating live answers against their sources</h1>
+<p>A model request can complete, return the expected fields, and cite a real passage
+while still leaving the question partly answered. To understand that outcome, we
+need to see which code reached the model and which claims the response makes.</p>
+<p>This chapter follows live generation through Repo Explorer&#39;s LangChain adapter
+and LangGraph workflow. It includes actual Codex-backed browser captures from the
+public teaching fixtures, together with the evidence used to examine the answers.
+The retrieval chapter records a separate local learned-embedding comparison.
+Remote embeddings and other chat providers still need their own verification.</p>
+<h2>Compose a prompt and a typed response</h2>
+<p><code>ChatAnswerGenerator</code> builds a <code>ChatPromptTemplate</code> containing the mandatory policy,
+the question, the intent, and retrieved source data. It composes that prompt with
+the selected chat adapter&#39;s <code>with_structured_output(DraftAnswer)</code>. The result contains
+answer text, the identifiers of the passages it cites, an <code>answerability</code> assessment,
+and a list of <code>limitations</code>. Complete answers require an empty limitations list;
+partial or insufficient-evidence responses must state what information is missing.</p>
+<p>LangChain documents this adapter and its
+<a href="https://docs.langchain.com/oss/python/integrations/chat/openai">structured-output support</a>.
+OpenAI&#39;s <a href="https://developers.openai.com/api/docs/guides/structured-outputs">structured-output guide</a>
+describes schema-constrained responses. A valid schema gives the application a
+reliable shape to parse. Whether the explanation follows from its sources is a
+separate question that we examine below.</p>
+<p>Repo Explorer checks that citation identifiers exist in the retrieved evidence and that
+inline references agree with the structured list. This catches invented source
+IDs and inconsistent citation metadata. It cannot catch every unsupported claim
+that happens to point at a real source. The reader still needs the evidence panel.</p>
+<h2>Configure the two independent choices</h2>
+<p>Open Settings to select the chat provider, model, and endpoint independently from
+the embedding provider, model, and endpoint. Repository paths, chunk sizes, file
+selection, retrieval limits, and workspace labels are also editable. Applying a
+configuration prepares a replacement index and graph, persists <code>repo-explorer.json</code>, then
+activates them. A failed update keeps the previous workspace usable; pending
+reviews retain the evidence with which they were created.</p>
+<p><img src="assets/06-settings.png" alt="Workspace settings"></p>
+<p><em>Workspace settings expose user choices while the graph retains citation and review rules.</em></p>
+<p>Alternatively, supply environment defaults before saving a workspace configuration.
+From the project root, copy <code>.env.example</code> to <code>.env</code> and choose an available model:</p>
+<pre><code class="language-dotenv">REPO_EXPLORER_MODE=live
+REPO_EXPLORER_MODEL=your-supported-model-id
+</code></pre>
+<p>Provide <code>OPENAI_API_KEY</code> in the server environment. Keep it out of the frontend,
+repository commits, and screenshots. <code>REPO_EXPLORER_BASE_URL</code> is optional for a compatible
+endpoint; the configured provider must support the adapter&#39;s structured-output
+contract. Verify that contract with the selected provider before relying on it.</p>
+<p>Generation and retrieval are separate choices. The default <code>tfidf</code> embedding provider
+gives the live model passages retrieved by the existing lexical baseline.
+Setting <code>REPO_EXPLORER_EMBEDDING_PROVIDER=openai</code> and an embedding model selects learned vectors through <code>OpenAIEmbeddings</code>.
+This changes which passages are found without changing the graph&#39;s review logic.</p>
+<p>Remote embedding configuration sends corpus text to the embedding provider.
+Live generation sends retrieved text and policy to the chat provider. The bundled
+teaching corpus is suitable for demonstrating that boundary. A private repository
+needs a deliberate data-handling choice before being used as input.</p>
+<h2>Use a signed-in Codex CLI locally</h2>
+<p>The <code>codex</code> chat adapter provides another integration route for a trusted local
+workspace. Codex supports <a href="https://learn.chatgpt.com/docs/non-interactive-mode">non-interactive requests with saved authentication and a response schema</a>.
+Repo Explorer wraps that interface in a LangChain chat model, so the existing prompt
+and typed response still feed the same LangGraph workflow. Each invocation is a
+separate request containing the configured policy, question, and retrieved evidence.</p>
+<p>Each invocation receives the retrieved passages in a fresh turn. The adapter starts
+in a temporary directory, disables project instructions, memories, browsing, plugins,
+and shell tools, and requires a completed structured response. The model name and
+reasoning effort are settings; the native executable path is configured by the
+server operator. This preserves the separation between the optional React interface,
+the backend workflow, and the replaceable generation provider.</p>
+<p>Trying the integration exposed an operational failure before answer evaluation:
+the installed CLI reported a ChatGPT sign-in, and retrieval found both annotated
+cache implementations, but generation timed out. Windows used a local proxy while
+the backend&#39;s CLI process lacked proxy environment settings. A direct connection
+timed out; explicitly passing the existing proxy made the same pipeline complete.
+Proxy routing is now an optional server setting, separate from model selection.</p>
+<p>For the question “Find the cache lookup implementations,” the real response cited
+the Python <code>LookupCache.cache_lookup</code> method&#39;s dictionary read and the TypeScript
+<code>cacheLookup</code> function&#39;s HTTP request, error handling, and JSON response. Those
+claims match the supplied passages, and the answer treats the two implementations
+as independent examples. This small authored case demonstrates the integration
+from retrieval through LangChain generation to LangGraph citation validation.
+Performance on unfamiliar repositories remains to be evaluated.</p>
+<p>Saved authentication, successful retrieval, a completed response, and a supported
+explanation remain four separate observations. Citation validation checks source
+identifiers; reviewing the actual claims still requires reading the cited evidence.</p>
+<h2>Observe what changes when the evidence changes</h2>
+<p>The next live comparison kept the <code>publish_record</code> question, source snapshot, chat
+model, and prompt fixed. With only lines 5–7 of the function, the model explained
+JSON serialization and explicitly said that writing and error handling were not
+visible. With bounded context expansion enabled, it received lines 1–10 and explained
+the <code>.pending</code> file write followed by destination replacement. It also identified
+the absence of explicit error handling or cleanup. Those statements match the
+supplied source; neither response claimed crash-durability guarantees.</p>
+<p>The extra context grew from 184 to 359 characters. This shows how including missing
+logic can change an explanation, with a concrete context-size tradeoff. The example
+was authored during development and each configuration produced one response, so
+the result is limited to those observed responses.</p>
+<p>Two controls expose the limits. The paraphrase “How are remembered objects
+recovered?” still produced no lexical matches, so the graph abstained before calling
+the model. A production-region question received the complete function but the
+model still declined to name a region: the source supplied no deployment facts.</p>
+<p>That earlier region response had valid citations, so the workflow marked it
+<code>completed</code>. This revealed a contract gap: completion and valid references did not distinguish a
+substantive answer from an explanation of why the question cannot be answered.
+The current implementation addresses that gap with an explicit answerability
+field and saved qualifications. Old reports retain their original outcomes;
+old checkpoints without the field are shown as <strong>Not assessed</strong>.</p>
+<p>These claim assessments were made by the Codex assistant reading the actual source
+passages. Independent human review is still pending. The observed value here is the
+ability to inspect which evidence reached generation and what changed with it.</p>
+<h2>Follow answer coverage through the live interface</h2>
+<p>The subsequent browser walkthrough asks: “Explain the full <code>publish_record</code>
+implementation, including how it writes the destination.” It uses the same authored
+source, identifier-aware TF-IDF retrieval, and a configured Codex model. The first
+request selects review intent with context expansion disabled.</p>
+<p><img src="assets/08-live-partial.png" alt="A real live response identifies the truncated function explanation as partial"></p>
+<p><em>Live Codex generation with lines 5–7. The source contains serialization, while
+the assessment names the missing destination-writing and error-handling information.</em></p>
+<p>The model explains the visible serialization and reports <strong>Partial answer</strong>. The
+workflow independently reports <strong>awaiting review</strong>. Those labels answer different
+questions: how much the response claims to explain, and whether someone has accepted
+the brief. Reloading restores both. Approving this brief changes the workflow status
+to <code>approved</code> while preserving its answer, partial assessment, and limitations.</p>
+<p>Next, Settings enables <code>line_window</code> expansion. Asking the same question supplies
+the complete function, including <code>pending.write_text(...)</code> and
+<code>pending.replace(destination)</code>.</p>
+<p><img src="assets/09-live-complete.png" alt="A live answer explains the complete function with the expanded source and context trace"></p>
+<p><em>The model reports complete coverage after receiving lines 1–10. The source and
+expansion trace show exactly what additional evidence reached generation.</em></p>
+<p>The response describes serialization with sorted keys, a UTF-8 write to a <code>.pending</code>
+path, and replacement of the destination. It also notes the absence of explicit
+error handling or cleanup. Reading the displayed function supports those claims;
+the label records the model&#39;s own assessment. Expansion made the missing operations
+available. Each generated explanation still needs to be checked against its evidence.</p>
+<p>Finally, the review question asks which production region runs this function.
+Even the complete source contains no deployment configuration.</p>
+<p><img src="assets/10-live-insufficient.png" alt="A live response identifies missing deployment evidence and stops before review"></p>
+<p><em>The model identifies the missing deployment information. The workflow stops at
+validation, and no approval action is offered.</em></p>
+<p>This response preserves its explanation and source citation with
+<code>answerability=insufficient_evidence</code>. Reloading preserves the missing-information
+message. A direct API attempt to approve it is also refused, so this behavior is a
+backend rule available to every client of the API.</p>
+<p>These captures come from an opt-in browser run with actual generation. The Codex
+assistant inspected the recorded claims against the source; independent human
+review remains pending. The browser run exercised the approval button to check
+the saved decision and response fields. The README documents how to repeat the journey
+with a locally selected provider and model.</p>
+<h2>Observe behavior before adding sophistication</h2>
+<p>Try a question with a clear source passage. Inspect whether the model&#39;s explanation
+is supported by it. Then try a paraphrase, an ambiguous question, and a question
+outside the snapshot. Compare the retrieved passages before attributing a better
+answer to the model. A poor context selection can look like a generation failure.</p>
+<p>If retrieval finds nothing, Repo Explorer abstains before calling the model. If the provider
+call fails, the API returns an error. If source identifiers are invalid, validation
+prevents the draft from reaching the human-review gate. These are distinct outcomes
+with different remedies.</p>
+<h2>Separate retrieval failures from unsupported explanations</h2>
+<p>The project now includes an experiment runner around the same <code>KnowledgeIndex</code>,
+<code>ChatAnswerGenerator</code>, and LangGraph workflow used by the API. A preflight checks
+the hash-pinned source files and selected configuration without contacting a model.
+An explicit execution records seed passages, optional context expansion, the parsed
+model draft, and the final workflow answer. Reference annotations are withheld from
+both retrieval and prompting.</p>
+<p>LangGraph&#39;s <a href="https://docs.langchain.com/oss/python/langgraph/streaming">node-update stream</a>
+provides the observation boundary. It lets the evaluator preserve the composition
+result before citation validation can replace it. The workflow still owns its
+transitions, and evaluation observes the same pipeline used by the API.</p>
+<p>Consider the public cache example from the retrieval article. The question “How are
+remembered objects recovered?” defeats the lexical candidates. The later FastEmbed
+comparison recovered the local mapping operation and the response explained it
+with an explicit qualification about the ambiguous question. If the right operation
+is present and the model describes
+an unsupported deployment region, the failure is in the explanation. If the passage
+never reaches the model, missing evidence is the first issue to investigate.</p>
+<p>The runner creates a pending human-review record alongside its citation checks.
+Reviewers identify material claims, mark their support against the supplied
+context, and record missing qualifications. Reference notes help assess
+completeness and may themselves need correction. Chapter two&#39;s ambiguous
+concurrency question shows why annotations also need scrutiny.</p>
+<p>The answerability contract also handles a refusal without citations. A response
+explicitly classified as <code>insufficient_evidence</code> may omit references because it
+makes no sourced explanation. Any references it does include must still match
+known sources, including references inside its limitations. A complete or partial
+answer requires valid citations. An unknown source identifier produces
+<code>invalid_citations</code> regardless of the model&#39;s assessment.</p>
+<p>The evaluator preserves both the draft and final workflow state. Its current
+report distinguishes <code>model_abstention</code> from <code>no_context</code>: the former follows
+generation using retrieved passages; the latter stops before generation. A
+<code>partial</code> outcome records incomplete coverage, while <code>answered</code> records the model&#39;s
+claim of complete coverage with valid citation structure. A reviewer separately
+assesses factual support. Extractive or legacy generators without assessments are recorded
+as <code>not_assessed</code>.</p>
+<p>To compare retrieval methods, keep the same snapshot, questions, chat model,
+policy, and context settings, then change the embedding configuration. Compare
+evidence coverage before answer support and completeness. Record threshold changes
+because scores from different embedding models are not interchangeable. Model
+variation and the small authored corpus limit what a single comparison establishes.</p>
+<p>Reports include elapsed timings and provider-reported chat token usage when the
+adapter supplies it. Missing usage remains unknown; embedding costs and total
+monetary cost are not measured. Source passages, parsed drafts, and final answers
+are retained locally for review. The backend comparisons and the browser walkthrough
+above provide different evidence: the former expose retrieval and generation
+artifacts, while the latter exercise settings, displayed qualifications, saved
+responses, and review actions through the real API.</p>
+<h2>Let an external package expose an integration failure</h2>
+<p>A later check used pinned Python sources from HTTPX. Before running the pipeline,
+we fixed questions about <code>raise_for_status</code>, the synchronous request path, and a
+missing production region. Source inspection supplied a reference reading. The
+pipeline then retrieved two passages per question through the same LangChain and
+LangGraph components as the application.</p>
+<p>The first answer identified <code>Response.raise_for_status</code>, but its excerpt stopped
+before the final <code>HTTPStatusError</code> raise. The answer reported that limitation.
+A separate follow-up enabled the existing line-window expansion and recovered the
+missing operation. That run exposed another problem: the owning class disappeared
+from the supplied metadata, and the model withheld it.</p>
+<p>The cause was in our code. Expansion removed trailing blank lines while keeping
+the original window&#39;s ending line number. Source analysis checked the excerpt
+against that range, found a mismatch, and declined to attach definitions. The map
+displayed a file and a source-mismatch issue. We corrected the range calculation
+and added regression coverage for blank lines inside a file and at its end.</p>
+<p>The corrected live run used the same question, configuration, and excerpt text.
+It restored the definition metadata, identified <code>Response</code>, and explained the
+method&#39;s return and error paths. The map marked the method&#39;s body as fully included
+while keeping the larger class partial. That full-span label concerns the method
+text; the definition of its <code>is_success</code> property was still outside the context.
+The answer stayed at the supplied branch condition without claiming a status range.</p>
+<p>The cross-file question exposed a different gap. Its retrieved passages described
+transports but omitted the API and client methods that connect <code>httpx.get</code> to
+them. The generation request also failed with an <code>invalid_response</code> error, so
+that run produced no answer or map. The original failure stays in the record.
+The deployment question completed in a separate run and identified the missing
+application configuration without inventing a region.</p>
+<p>We then made the generation diagnostics more specific and repeated the failed
+question with exactly the same evidence. The repeat completed. Its answer
+explained the transport fragments and explicitly identified the missing API/client
+path. A successful second request cannot tell us why the first one failed. It does
+let us inspect the retrieval problem independently of that execution failure.</p>
+<p>Before adding another workflow step, we also checked the existing passage limit.
+An offline comparison at two, four, and eight passages recovered the public API
+delegations at the larger limit, but still missed the synchronous client&#39;s dispatch
+path. Some additional results belonged to the asynchronous implementation.
+That result gives a follow-up retrieval experiment a concrete target: find the
+missing synchronous call sites while preserving evidence for each connection.</p>
+<p>These outcomes direct work to different parts of the system: excerpt provenance,
+connected evidence retrieval, and generation diagnostics. The
+<a href="../MAP_EVALUATION.md">HTTPX inspection record</a> includes source references,
+configuration, separate follow-ups, and reproduction steps. These are assistant
+observations; independent source review and a human navigation study remain open.</p>
+<h2>Extend from a demonstrated need</h2>
+<p>Adapters are registered factories for source loading, embeddings, vector storage,
+chat models, answer generation, context expansion, and source analysis. Installed packages can register additional names
+through the <code>repo_explorer.plugins</code> Python entry-point group. The Settings screen
+discovers those names from the backend. Each plugin can accept non-secret options;
+credentials stay in server environment variables. A custom generator can change
+prompt construction while preserving the graph&#39;s validation and review stages.
+The repository&#39;s configuration guide describes the contracts and persistence rules.</p>
+<p>The source-identity work in chapter two followed an observed problem: the returned
+method omitted its class header. Python syntax metadata now supplies that identity.
+The containment map in chapter four makes that identity inspectable alongside its
+supporting passages. Recovering missing operations across files and resolving call
+relationships remain open work. Further retrieval changes need similarly specific
+examples before we add them.</p>
+<p>That pattern has shaped the AI engineering work throughout this project. A missing
+write operation led to bounded context expansion. A completed response that could
+not answer the question led to explicit answer-coverage fields. An ambiguous
+concurrency question exposed a problem with our reference annotation. Each
+observation points to a different part of the system and a different correction.</p>
+<p>The current result is a local application with an inspectable path from repository
+text to a saved explanation. Broader evaluation, independent source review, and
+comparison with ordinary repository search and assistant use are still needed.
+Those results should guide how much further the application grows.</p>
+</article></div></body></html>

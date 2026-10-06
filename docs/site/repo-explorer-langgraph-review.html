@@ -1,0 +1,116 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>A review that survives closing the browser · Repo Explorer</title><style>*{box-sizing:border-box}body{margin:0;background:#f7f8f2;color:#334631;font:16px/1.85 'Segoe UI',sans-serif}header{background:#15392d;color:#e4edda;padding:30px max(24px,calc((100% - 1100px)/2));font-size:14px;letter-spacing:2px}header a{color:inherit;text-decoration:none}header small{display:block;letter-spacing:0;color:#a8be99;font-size:12px}.layout{display:grid;grid-template-columns:240px minmax(0,820px);gap:45px;max-width:1160px;margin:45px auto;padding:0 24px}nav{font-size:13px}nav a{display:block;padding:12px 0;border-bottom:1px solid #dfe7d5;text-decoration:none;color:#69805a}nav span{font-size:10px;letter-spacing:1px;color:#9aa98c}article{min-width:0}h1,h2{font-family:Georgia,serif;line-height:1.2;font-weight:400;letter-spacing:-.6px;color:#23452e}h1{font-size:43px;margin:0 0 28px}h2{font-size:29px;margin-top:42px}p{margin:19px 0}a{color:#517e37;text-underline-offset:3px}img{max-width:100%;height:auto;border:1px solid #dce5d1;border-radius:9px;display:block;margin:28px auto}p:has(>em:only-child){font-size:13px;color:#80916f;line-height:1.7}pre{background:#eaf0e1;padding:23px;overflow:auto;border-radius:8px;line-height:1.6;font-size:13px}code{font-size:.86em;overflow-wrap:anywhere}table{border-collapse:collapse;font-size:13px;width:100%}td,th{padding:12px;border-bottom:1px solid #d6dfcb;text-align:left}blockquote{border-left:3px solid #9ab17b;padding-left:20px;color:#6c805b}.draft{font-size:11px;letter-spacing:1.5px;color:#8d9e78;margin-bottom:14px}.next{border-top:1px solid #dae3cc;padding-top:24px;margin-top:45px;font-size:14px}.cards{display:grid;gap:17px}.card{display:block;padding:24px;border:1px solid #dae3cc;border-radius:10px;background:#fdfef8;text-decoration:none}.card strong{font:24px Georgia,serif;display:block;color:#325135}.card p{font-size:14px;margin:12px 0 0;color:#829372}@media(max-width:800px){.layout{display:block;margin:25px auto}nav{margin-bottom:35px}nav a{padding:7px 0}h1{font-size:35px}body{font-size:15px}header{padding:24px}}</style></head><body><header><a href="index.html">REPO EXPLORER / ENGINEERING NOTES</a><small>A repository assistant, explained from evidence to interface.</small></header><div class="layout"><nav><span>THE ENGINEERING SERIES</span><a href="repo-explorer-architecture.html">01 / Building Repo Explorer: the work of an AI engineer</a><a href="repo-explorer-retrieval.html">02 / From source files to useful evidence</a><a href="repo-explorer-langgraph-review.html">03 / A review that survives closing the browser</a><a href="repo-explorer-evidence-interface.html">04 / An interface for inspecting an answer</a><a href="repo-explorer-live-model.html">05 / Evaluating live answers against their sources</a></nav><article><div class="draft">EDITORIAL DRAFT · VERSION 0.1.0</div><h1>A review that survives closing the browser</h1>
+<p>A review can last longer than an HTTP request. The person reading a draft might
+close the browser, restart the application, or return tomorrow. A callback held in
+memory cannot represent that lifecycle reliably. Repo Explorer uses a LangGraph interrupt
+and a durable checkpoint to make the pending decision part of application state.</p>
+<h2>Represent the workflow as state and steps</h2>
+<p>Orchestration is the code that decides what runs next and carries information
+between steps. In LangGraph, a <strong>state</strong> is the data available to the workflow,
+a <strong>node</strong> is a function that reads it and returns updates, and an <strong>edge</strong> connects
+one step to the next. A conditional edge selects a path using the current state.
+Those concepts are described in LangGraph&#39;s <a href="https://docs.langchain.com/oss/python/langgraph/graph-api">graph API guide</a>.</p>
+<p>In Repo Explorer, retrieval adds source passages to the state. A conditional edge
+checks whether any were found. It sends an empty result to abstention and sends
+usable context toward generation. The rules are ordinary application code, so
+we can inspect why a run took a particular path.</p>
+<p><img src="assets/workflow.svg" alt="The LangGraph answer and human-review branches"></p>
+<p>The default graph path is retrieve, compose, and validate. No evidence
+routes directly to abstention. Invalid source references and model-reported
+insufficient evidence stop the draft at validation. Complete or partial answers
+with valid references finish for question intent, while review intent reaches an
+interrupt. The extractive demo remains unassessed and follows the same review path.
+The diagram omits helper functions and transport details so
+the actual decisions remain readable.</p>
+<p>In <code>backend/src/repo_explorer/workflow.py</code>, <code>RunState</code> stores the question, intent, evidence,
+answer, citation identifiers, answerability, limitations, and completed steps.
+Node functions return updates.
+<code>build_workflow</code> connects them with <code>StateGraph</code> and compiles the graph using the
+application’s SQLite checkpointer.</p>
+<h2>Add context for a concrete retrieval failure</h2>
+<p>A matched passage can end just before the operation a reader needs to inspect.
+In an authored example, retrieval finds <code>publish_record</code> at lines 5–7 while the
+write and replacement operations are at lines 9–10. Merely reporting the function
+name would leave the explanation without its supporting code.</p>
+<p>Repo Explorer offers an optional <code>expand_context</code> node between retrieval and
+composition. The earlier diagram shows the default with expansion disabled;
+this focused diagram shows what the extra step does:</p>
+<p><img src="assets/context-expansion.svg" alt="A seed passage receives nearby lines within a growth budget before composition"></p>
+<p>The conditional edge enters this node only when sources exist and an expansion
+adapter is configured. A node need not call a model: LangGraph&#39;s
+<a href="https://docs.langchain.com/oss/python/langgraph/graph-api">graph API</a> represents
+state updates and branching for deterministic operations too. Here the node
+adds snapshot context, records its decisions, and then passes the evidence to
+the existing generator. There is one pass and no loop.</p>
+<p>Choose <strong>Settings → Evidence context → line_window</strong>. The default strategy is
+still <code>none</code>. Users control surrounding lines and a shared added-character budget.
+The expander uses text captured during indexing, verifies the original excerpt,
+and preserves source identity. A candidate that does not fit the remaining budget
+leaves the original passage intact. It never cuts a candidate midway through a
+line merely to fit it.</p>
+<p><img src="assets/07-context-expansion.png" alt="A review with the expanded publish_record excerpt and its saved context trace"></p>
+<p><em>The authored source example runs in offline demo mode. The source now includes
+the previously missing write/replace operations. The expanded trace records the
+original and resulting ranges; similarity still refers to the original match.</em></p>
+<p>The public example is reproducible with <code>evaluations/context.json</code> and its
+companion configuration. Its matched excerpt grows from 184 to 359 characters.
+This spends additional context to recover nearby evidence. Because the context
+sizes differ and the example was authored during development, the comparison
+establishes only what that added window supplied. The API exposes the same trace
+through <code>context_expansion</code>, so another frontend can explain the decision.</p>
+<p>Increasing the original chunk size is another reasonable approach. In the private
+development case, larger chunks also recovered the missing write sequence and
+found a serialization rule that the fixed window missed. Expansion used less
+context for the write question. These mixed results justify exposing configuration
+and recording tradeoffs; they do not establish one universal chunking strategy.</p>
+<p>The node applies the configured window whenever retrieval returns passages.
+The expansion can still stop inside a function, and it stays within the retrieved
+files. It also expands this function for an unanswerable question
+about its production region. More source text cannot supply information absent
+from the repository. Question-driven investigation and semantic sufficiency checks
+remain separate work.</p>
+<h2>Pause with data</h2>
+<p>The review node sends the draft to the caller:</p>
+<pre><code class="language-python">decision = interrupt({&quot;kind&quot;: &quot;review_brief&quot;, &quot;answer&quot;: state[&quot;answer&quot;]})
+</code></pre>
+<p>The node resumes when the application invokes the graph with a decision:</p>
+<pre><code class="language-python">graph.invoke(
+    Command(resume={&quot;approved&quot;: True}),
+    {&quot;configurable&quot;: {&quot;thread_id&quot;: run_id}},
+)
+</code></pre>
+<p>The identifier connects the request to the saved state. LangGraph&#39;s
+<a href="https://docs.langchain.com/oss/python/langgraph/interrupts">interrupt documentation</a>
+explains this pause/resume contract and notes that the interrupted node starts
+again on resume. Repo Explorer therefore performs no external writes before its interrupt.
+A future node that creates a ticket or starts a worker would need an explicit
+idempotency strategy.</p>
+<h2>Follow the review in the browser</h2>
+<p>Select <strong>Review a brief</strong> and ask about the checkpoint and human-review policy.
+The answer appears with an <strong>awaiting review</strong> status. The trace shows completed
+retrieval, composition, and citation checks, followed by the paused review stage.</p>
+<p><img src="assets/03-review.png" alt="A pending review with approve and reject controls"></p>
+<p><em>The controls operate on a persisted interrupt. Approval records acceptance of
+the review brief. This workflow has no code-execution step.</em></p>
+<p>Reload the page. Its URL contains the run identifier, and the browser fetches the
+saved run from the API. Restarting the same application version also preserves
+the pending review because the state is in SQLite. Approve or reject the brief to
+reach a terminal status. The service refuses a second decision on a completed run.</p>
+<p>When expansion was enabled, the enlarged excerpts and their trace are already
+part of that checkpoint. Resuming review preserves them even if settings or the
+source checkout changed afterward; it does not run context expansion again.
+Approval also preserves the answer&#39;s qualifications: approving a partial brief
+does not turn it into a complete answer. The model&#39;s assessment describes its
+claimed coverage, while the review status records the person&#39;s decision.</p>
+<h2>Know the persistence boundary</h2>
+<p>Persistence stores the state required to continue. Repo Explorer supports the
+local restart case with a single backend process and serialized mutations.
+Checkpoint migration across graph-schema changes, user authorization, and
+distributed execution would need additional implementation. Source support also
+needs its own review, regardless of whether the answer was saved successfully.</p>
+<p>The API response includes the recorded node names. The frontend turns them into
+a compact trace after the request completes. A running request currently waits
+for its API response before those steps become visible in the browser.</p>
+<p>See <code>service.py</code> for run identity and decision handling, and <code>workflow.py</code> for the
+transitions. LangGraph&#39;s <a href="https://docs.langchain.com/oss/python/langgraph/persistence">persistence overview</a>
+provides the underlying checkpoint model.</p>
+<div class="next">Continue reading → <a href="repo-explorer-evidence-interface.html">An interface for inspecting an answer</a></div></article></div></body></html>

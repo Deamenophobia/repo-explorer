@@ -1,0 +1,20 @@
+{
+  "workspace": {
+    "mode": "live",
+    "chat_provider": "codex",
+    "model": "your-supported-codex-model",
+    "codex_reasoning_effort": "medium",
+    "request_timeout": 120,
+    "max_retries": 0,
+    "embedding_provider": "fastembed",
+    "embedding_model": "BAAI/bge-small-en-v1.5",
+    "lexical_tokenization": "code_identifiers",
+    "chunk_size": 1100,
+    "chunk_overlap": 150,
+    "retrieval_limit": 2,
+    "minimum_score": -1,
+    "context_expander": "none"
+  },
+  "max_cases": 10,
+  "stop_on_error": true
+}

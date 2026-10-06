@@ -1,0 +1,120 @@
+.settings-dialog {
+  width: min(800px, calc(100vw - 32px));
+  max-height: 90vh;
+  border: 1px solid #cbd8bf;
+  border-radius: 16px;
+  background: #fafbf5;
+  color: #334b36;
+  padding: 28px;
+  box-shadow: 0 20px 80px #102e2733;
+}
+.settings-dialog::backdrop {
+  background: #102e2780;
+}
+.settings-dialog header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.settings-dialog h2 {
+  font-size: 29px;
+}
+.settings-intro,
+.settings-note {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #718068;
+}
+.settings-group {
+  border: 1px solid #dce5d2;
+  border-radius: 9px;
+  margin: 12px 0;
+  background: #fffef9;
+}
+.settings-group summary {
+  padding: 14px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+.settings-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 0 16px 20px;
+}
+.settings-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12px;
+}
+.settings-fields input,
+.settings-fields select,
+.settings-fields textarea {
+  width: 100%;
+  border: 1px solid #ccd8bd;
+  border-radius: 5px;
+  padding: 9px;
+  color: #334b36;
+  background: #fff;
+  font: inherit;
+}
+.settings-fields textarea {
+  min-height: 90px;
+  resize: vertical;
+  line-height: 1.6;
+}
+.settings-fields .wide-field {
+  grid-column: 1/-1;
+}
+.settings-fields small {
+  color: #8b9980;
+  font-size: 10px;
+}
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 22px;
+}
+.settings-actions button {
+  border: 1px solid #ccd8bd;
+  padding: 10px 15px;
+  border-radius: 6px;
+  background: #f0f3e8;
+  color: #48603b;
+}
+.settings-actions .primary {
+  background: #33553a;
+  color: #fff;
+  border-color: #33553a;
+}
+.settings-trigger {
+  border: 1px solid #d2ddc4;
+  border-radius: 5px;
+  background: #edf2e5;
+  color: #567047;
+  font-size: 11px;
+  padding: 7px 10px;
+  margin-right: 18px;
+}
+.settings-note {
+  background: #edf2e4;
+  padding: 12px;
+  border-radius: 6px;
+}
+@media (max-width: 600px) {
+  .settings-dialog {
+    padding: 18px;
+  }
+  .settings-fields {
+    grid-template-columns: 1fr;
+  }
+  .settings-trigger {
+    margin-right: 8px;
+  }
+  .local-status {
+    font-size: 9px;
+  }
+}

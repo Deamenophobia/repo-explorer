@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "name": "Public teaching corpus retrieval baseline",
+  "scope": "Small authored documentation fixture. Useful for reproducing evaluation mechanics; not representative of a large code repository.",
+  "snapshot": {
+    "kind": "files",
+    "revision": null,
+    "files": [
+      {
+        "path": "POLICY.md",
+        "sha256": "57df924e1bdf92ab934293436828377cb2888ff42192e09d7b1c065486dee48d"
+      },
+      {
+        "path": "docs/architecture.md",
+        "sha256": "1ef73b29eab141e3513f7e460c6e466ba832e33d01ce06f4b7cb3ab550686ed3"
+      },
+      {
+        "path": "docs/ingestion.md",
+        "sha256": "0a4e6fbbc2d6601f6a766e559fea91f531fc117ebb7506665efb89df555fb2cc"
+      },
+      {
+        "path": "docs/workflow.md",
+        "sha256": "acf78732c2388d529252087812e8df2d7c95863130a96a0e16e4bff1c84d425d"
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "source-provenance",
+      "question": "How does repository ingestion preserve source references, and does a citation prove the answer is correct?",
+      "reference_notes": "Chunks retain path, line range and content revision. A citation locates a passage; it does not establish claim correctness.",
+      "evidence": [
+        {
+          "id": "chunk-metadata",
+          "path": "docs/ingestion.md",
+          "start_line": 4,
+          "end_line": 7,
+          "quote": "The ingestion pipeline reads Markdown and supported source files from a configured\ndirectory. A recursive text splitter creates overlapping chunks so neighboring\ncontext remains available near chunk boundaries. Each chunk retains its relative\nfile path, starting line, ending line, and a content revision hash."
+        },
+        {
+          "id": "citation-limits",
+          "path": "POLICY.md",
+          "start_line": 6,
+          "end_line": 8,
+          "quote": "Repository explanations must identify source files and line ranges. Missing evidence\nmust be disclosed. A citation confirms where a passage came from; it does not prove\nthat every generated claim is correct."
+        }
+      ],
+      "unanswerable": false
+    },
+    {
+      "id": "durable-review",
+      "question": "How does a human review decision survive closing the browser?",
+      "reference_notes": "SQLite persists a thread checkpoint. Resuming that thread supplies a decision. Approval accepts the brief without editing or deploying code.",
+      "evidence": [
+        {
+          "id": "checkpoint-resume",
+          "path": "docs/workflow.md",
+          "start_line": 9,
+          "end_line": 12,
+          "quote": "A SQLite checkpointer persists the workflow under a unique thread identifier.\nThe review node calls interrupt with the draft. The browser displays a pending\ndecision and can be closed without losing that checkpoint. Resuming with the same\nthread identifier and Command(resume=...) supplies the human decision."
+        },
+        {
+          "id": "approval-boundary",
+          "path": "POLICY.md",
+          "start_line": 11,
+          "end_line": 13,
+          "quote": "Review briefs require an explicit human decision. Approval accepts the brief only.\nThe assistant does not edit files, merge code, or deploy software in this version.\nThe review decision is stored with the workflow checkpoint."
+        }
+      ],
+      "unanswerable": false
+    },
+    {
+      "id": "generation-boundary",
+      "question": "How can the application change its answer generator without changing the frontend API?",
+      "reference_notes": "A generator protocol separates extraction from configured chat generation. Both modes expose the same frontend API.",
+      "evidence": [
+        {
+          "id": "generator-protocol",
+          "path": "docs/architecture.md",
+          "start_line": 8,
+          "end_line": 11,
+          "quote": "AnswerGenerator is a Python protocol. ExtractiveGenerator supplies transparent\noffline evidence excerpts. ChatAnswerGenerator composes a LangChain prompt with a\nconfigured chat model and a structured answer schema. The React frontend uses the\nsame API in both modes and shows the current mode beside each answer."
+        }
+      ],
+      "unanswerable": false
+    },
+    {
+      "id": "missing-deployment",
+      "question": "Which cloud region hosts the production review database?",
+      "reference_notes": "No cloud deployment region is supplied by this selected teaching corpus. Related review or database passages do not answer this question.",
+      "evidence": [],
+      "unanswerable": true
+    },
+    {
+      "id": "no-vocabulary",
+      "question": "zyzzyva quokka nebula",
+      "reference_notes": "This query shares no useful vocabulary with the selected corpus; it is only a simple no-result control, not a realistic uncertainty benchmark.",
+      "evidence": [],
+      "unanswerable": true
+    }
+  ]
+}

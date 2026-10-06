@@ -1,0 +1,65 @@
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH || $CI_COMMIT_TAG'
+
+stages:
+  - verify
+
+default:
+  interruptible: true
+  timeout: 20 minutes
+
+variables:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  LANGSMITH_TRACING: "false"
+  REPO_EXPLORER_MODE: "demo"
+  REPO_EXPLORER_EMBEDDING_PROVIDER: "tfidf"
+
+backend:
+  stage: verify
+  image: python:3.12-slim-bookworm
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends git
+    - python -m venv .venv
+    - .venv/bin/python -m pip install -r requirements.lock
+    - .venv/bin/python -m pip install --no-deps -e .
+  script:
+    - .venv/bin/python -m pip check
+    - .venv/bin/python -m ruff check backend
+    - .venv/bin/python -m ruff format --check backend
+    - .venv/bin/python -m pytest --junitxml=.repo-explorer/ci/backend.xml
+  artifacts:
+    when: always
+    expire_in: 7 days
+    reports:
+      junit: .repo-explorer/ci/backend.xml
+
+browser-and-docs:
+  stage: verify
+  # Match @playwright/test in frontend/package-lock.json when upgrading.
+  image: mcr.microsoft.com/playwright:v1.63.0-noble
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends git python3-venv
+    - python3 -m venv .venv
+    - .venv/bin/python -m pip install -r requirements.lock
+    - .venv/bin/python -m pip install --no-deps -e .
+    - npm ci --prefix frontend
+  script:
+    - npm run build --prefix frontend
+    - cd frontend
+    - PLAYWRIGHT_JUNIT_OUTPUT_FILE=../.repo-explorer/ci/browser.xml npm run test:e2e -- --reporter=line,junit
+    - cd ..
+    - node frontend/scripts/build-docs.mjs
+    - node frontend/scripts/verify-docs.mjs
+  artifacts:
+    when: always
+    expire_in: 7 days
+    reports:
+      junit: .repo-explorer/ci/browser.xml
+    paths:
+      - frontend/test-results/
+      - frontend/dist/
+      - docs/site/

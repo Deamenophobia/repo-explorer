@@ -1,0 +1,26 @@
+{
+  "title": "AI engineering with Repo Explorer", "status": "draft", "language": "en", "version": "0.1.0",
+  "description": "Five chapters explain the work of an AI engineer through a repository assistant: selecting evidence with RAG, connecting models with LangChain, controlling execution with LangGraph, and examining the answers in a working interface.",
+  "evidence_note": "Chapters one through four use offline demo screenshots. Chapter five includes actual Codex-backed responses. The retrieval chapter also records local learned-embedding experiments on authored examples and pinned public package code. Broader evaluation and independent review remain open; this series is an unpublished draft.",
+  "articles": [
+    {"file":"01-architecture.md","slug":"repo-explorer-architecture","title":"Building Repo Explorer: the work of an AI engineer","description":"Follow a concrete question through the decisions about evidence, models, workflow, and evaluation; see where RAG, LangChain, and LangGraph fit.","hero":"assets/01-workbench.png"},
+    {"file":"02-retrieval.md","slug":"repo-explorer-retrieval","title":"From source files to useful evidence","description":"Compare lexical and local learned retrieval on pinned code, inspecting recovered evidence, ambiguity, and failures.","hero":"assets/02-evidence.png"},
+    {"file":"03-langgraph.md","slug":"repo-explorer-langgraph-review","title":"A review that survives closing the browser","description":"Use LangGraph interrupts and SQLite checkpoints to represent a durable human-review decision.","hero":"assets/03-review.png"},
+    {"file":"04-interface.md","slug":"repo-explorer-evidence-interface","title":"An interface for inspecting an answer","description":"Design a source explorer, workflow trace, and responsive reading surface around observable application behavior.","hero":"assets/04-abstention.png"},
+    {"file":"05-live-model.md","slug":"repo-explorer-live-model","title":"Evaluating live answers against their sources","description":"Inspect real model responses, trace incomplete explanations to their evidence, and use observed failures to guide the next engineering decision.","hero":"assets/09-live-complete.png"}
+  ],
+  "assets": [
+    {"file":"assets/01-workbench.png","alt":"Repo Explorer workbench with repository snapshot and suggested questions","caption":"The local workbench in offline extractive mode."},
+    {"file":"assets/02-evidence.png","alt":"An ingestion answer with an expanded original source passage","caption":"Source path, lines, and revision remain inspectable beside the response."},
+    {"file":"assets/03-review.png","alt":"A persisted review waiting for an approve or reject decision","caption":"A LangGraph interrupt represents the pending review."},
+    {"file":"assets/04-abstention.png","alt":"An unsupported question with an insufficient-evidence response","caption":"The graph abstains when retrieval finds no qualifying evidence."},
+    {"file":"assets/05-mobile.png","alt":"Repo Explorer mobile answer view with evidence below the conversation","caption":"The same workflow adapts to a narrow reading surface."},
+    {"file":"assets/06-settings.png","alt":"Workspace settings with configurable sources, generation, retrieval, and plugins","caption":"Settings persist user choices while preserving existing review evidence."},
+    {"file":"assets/07-context-expansion.png","alt":"An offline review with the expanded publish_record source and saved expansion trace","caption":"A bounded context window adds source lines while retaining the original match."},
+    {"file":"assets/08-live-partial.png","alt":"A real Codex response identifies its truncated function explanation as partial while awaiting review","caption":"The model reports missing destination-writing information from lines 5–7."},
+    {"file":"assets/09-live-complete.png","alt":"A real Codex answer with the full function source and context expansion trace","caption":"After expansion supplies lines 1–10, the model explains the write and replacement operations."},
+    {"file":"assets/10-live-insufficient.png","alt":"A real Codex response identifies missing deployment evidence with no approval action","caption":"Insufficient deployment evidence stops the workflow before human review."},
+    {"file":"assets/11-source-identity.png","alt":"An offline source card names DeadlineCache.expire outside the class header and shows partial definition coverage","caption":"Snapshot syntax identifies the class and method without changing the retrieved source excerpt."},
+    {"file":"assets/12-evidence-map.png","alt":"An evidence map shows a file containing DeadlineCache and its expire method with a partial source passage link","caption":"The selected method exposes explicit containment and a link to the original evidence; this capture uses the offline authored example."}
+  ]
+}
