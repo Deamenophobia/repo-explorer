@@ -65,3 +65,7 @@ cross-file call graphs and frontend/backend contract discovery are deferred.
 Citation checks validate references, while factual support still requires review.
 The application records review decisions and leaves repository code unchanged.
 See [scope and operating limits](docs/SCOPE.md) for details.
+
+## License
+
+[MIT](LICENSE). Third-party evaluation sources retain their included license notices.
