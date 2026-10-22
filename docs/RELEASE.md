@@ -45,7 +45,7 @@ review those when selecting the destination.
 
 ## Local verification
 
-Use the commands under [Developer checks](../README.md#developer-checks). Stop the
+Use the commands under [Developer checks](DEVELOPMENT.md#developer-checks). Stop the
 preview before E2E: those tests own ports 8018 and 5178. Restore the preview after
 verification. Rebuild `docs/site` after E2E regenerates article screenshots, then
 run `node frontend/scripts/verify-docs.mjs`.

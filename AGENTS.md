@@ -1,7 +1,8 @@
 # Working on Repo Explorer
 
 Read `CONTRIBUTING.md` for naming conventions and architectural boundaries. Use
-`README.md` for the current scope, setup, and verification commands.
+`README.md` for the overview, `docs/GETTING_STARTED.md` for setup,
+`docs/SCOPE.md` for scope, and `docs/DEVELOPMENT.md` for verification commands.
 
 ## Decide what is worth building
 

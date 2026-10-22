@@ -11,7 +11,7 @@ one backend process. It is not a multi-user or background-job API.
 
 ## Start the backend independently
 
-Install the Python dependencies from [the README](../README.md#start-locally), then
+Install the Python dependencies from [Getting started](GETTING_STARTED.md#start-locally), then
 run from the repository root:
 
 ```powershell

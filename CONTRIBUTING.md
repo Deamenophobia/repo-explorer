@@ -1,7 +1,7 @@
 # Development conventions
 
 Coding agents should also follow `AGENTS.md`. Install the optional Git checks using
-the [README setup](README.md#agent-guidance-and-git-hooks). Hook definitions are shared
+the [development guide](docs/DEVELOPMENT.md#agent-guidance-and-git-hooks). Hook definitions are shared
 in `.pre-commit-config.yaml`; installation is local to each clone. They check staged
 changes without running the application, browser tests, or live-model evaluations.
 
@@ -27,7 +27,7 @@ screenshots. The fixture is intentionally authored for publication. Keep article
 claims tied to the shipped version, and distinguish demo, implemented-but-unverified,
 and future functionality. Do not put test totals or pass-rate marketing in articles.
 
-Use the checks in README for changes to behavior. Add regression coverage for a
+Use the checks in [the development guide](docs/DEVELOPMENT.md#developer-checks) for changes to behavior. Add regression coverage for a
 new failure mode; avoid tests that merely repeat implementation details.
 `.gitlab-ci.yml` runs backend, browser, build, and article checks. CI uses the
 offline fixtures and makes no model calls. Deployment is a separate release step.

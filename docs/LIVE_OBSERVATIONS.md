@@ -82,7 +82,7 @@ preserved each response and its qualifications. These source-support judgments
 are assistant inspections; the UI's approval exercised workflow behavior and was
 not an independent human quality assessment.
 
-The walkthrough's setup is in [the README](../README.md#verify-the-live-browser-workflow),
+The walkthrough's setup is in [the development guide](DEVELOPMENT.md#verify-the-live-browser-workflow),
 and its actual screenshots appear in [the live-model article](articles/05-live-model.md).
 These later checks do not rewrite the earlier experiment reports.
 

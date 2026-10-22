@@ -149,7 +149,7 @@ with separate citations. Both descriptions match the supplied passages; it did n
 claim a demonstrated connection between those independent examples. This is a
 single teaching-fixture observation, not a general answer-quality benchmark. The
 default browser demonstration remains offline unless its mode is explicitly changed.
-An additional [opt-in live browser journey](../README.md#verify-the-live-browser-workflow)
+An additional [opt-in live browser journey](DEVELOPMENT.md#verify-the-live-browser-workflow)
 has exercised partial answers, complete function context, and model-reported
 insufficient evidence. See the [observations](LIVE_OBSERVATIONS.md) and
 [article screenshots](articles/05-live-model.md) for the specific behavior and limits.
